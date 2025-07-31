@@ -32,6 +32,17 @@ export CUDA_VISIBLE_DEVICES=0
 
 # Exécution du script Python
 
+start=$(date +%s)
+
 python GeneratorSequence.py
+
+end=$(date +%s)
+duration=$((end - start))  # Durée en secondes
+# Conversion secondes -> HH:MM:SS (compatible partout)
+hours=$((duration / 3600))
+minutes=$(( (duration % 3600) / 60 ))
+seconds=$((duration % 60))
+
+printf "Temps écoulé: %02d:%02d:%02d\n" $hours $minutes $seconds
 
 # #submission command is : sbatch submit_GenerateSequence.sh
