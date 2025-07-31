@@ -9,8 +9,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16           # 16 cœurs CPU
 #SBATCH --gres=gpu:1                 # 1 GPU A100
-#SBATCH --output=/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/logs/tokenisation_%j.out  # Chemin absolu
-#SBATCH --error=/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/logs/tokenisation_%j.err    # Chemin absolu
+#SBATCH --output=/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/logs/tokenisation_%j.out  # Chemin absolu
+#SBATCH --error=/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/logs/tokenisation_%j.err    # Chemin absolu
 
 eval $(idrenv -d wka) && cd $WORK
 
@@ -21,7 +21,7 @@ module load tensorflow-gpu/py3/2.8.0  # TensorFlow avec support GPU
 source /lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/mon_env/bin/activate
 
 # Déplacement dans le dossier source
-cd /lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/src
+cd /lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/src
 pwd
 
 export CUDA_VISIBLE_DEVICES=0

@@ -30,7 +30,7 @@ from Constantes import LIM_FLUX_CLUSTER, LIM_FLUX_AGN
 from Constantes import SEARCH_RADIUS_CLUSTER, SEARCH_RADIUS_AGN
 from Constantes import WINDOW_SIZE_ARCMIN, NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON
 from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
-from Constantes import SELECTED_COLUMNS_Xamin, use_log_scale_Xamin
+from Constantes import SELECTED_COLUMNS_Xamin, use_log_scale_Xamin, name_dir
 from Constantes import print_parameters
 
 print_parameters()
@@ -519,53 +519,68 @@ def process_rotations_in_chunks(list_windows, info_class,
 
 
 
-
-
 def discretise_et_complete(data_ref, data, n_bins, global_stats, selected_columns, log_scale_flags, PAD_TOKEN, max_sources):
     """
-    Version optimisée pour la performance.
+    Discrétise les colonnes numériques sélectionnées pour chaque fenêtre, avec normalisation 
+    linéaire ou logarithmique selon les indicateurs fournis.
+
+    Pour chaque fenêtre présente dans `data_ref`, on récupère les sources correspondantes dans `data`,
+    on extrait les colonnes `selected_columns`, on les normalise (log ou lin), puis on les discrétise
+    en `n_bins` entiers. Si une valeur est invalide (NaN, inf, <= 0 en log), elle est remplacée 
+    par `PAD_TOKEN`. Les fenêtres sont complétées jusqu'à `max_sources` par padding si nécessaire.
+    
+    Paramètres :
+    - data_ref : Table de référence contenant toutes les fenêtres attendues.
+    - data : Table contenant les données à discrétiser.
+    - n_bins : Nombre total de classes pour la discrétisation.
+    - global_stats : Dictionnaire contenant min, max (et log_min) pour chaque colonne.
+    - selected_columns : Liste des colonnes à traiter.
+    - log_scale_flags : Liste booléenne indiquant pour chaque colonne si l'échelle log est à utiliser.
+    - PAD_TOKEN : Valeur à utiliser pour le padding ou les données manquantes/invalides.
+    - max_sources : Nombre maximum de sources par fenêtre (pour uniformiser la taille des sorties).
+
+    Retour :
+    - Un tableau numpy de forme (n_fenêtres, max_sources, n_colonnes), contenant les valeurs discrétisées
+      ou `PAD_TOKEN` pour les entrées manquantes.
     """
-    # Pré-calculs initiaux
     windows = []
     data_windows = set(np.unique(data['window']))
     ref_windows = np.unique(data_ref['window'])
     pad_length = len(selected_columns)
     empty_padding = [[PAD_TOKEN] * pad_length for _ in range(max_sources)]
     n_bins_minus_1 = n_bins - 1
-    
+
     # Pré-calcul des paramètres de normalisation
     norm_params = []
-    for col_idx, col in enumerate(selected_columns):
-        stats = global_stats.get(col, {})
-        use_log = log_scale_flags[col_idx] and col in global_stats
-        if use_log:
-            log_min = stats['log_min']
-            log_range = np.log10(stats['max']) - log_min + 1e-30
-            norm_params.append(('log', log_min, log_range))
-        elif col in global_stats:
-            min_val = stats['min']
-            range_val = stats['max'] - min_val + 1e-30
-            norm_params.append(('linear', min_val, range_val))
-        else:
+    for col, use_log in zip(selected_columns, log_scale_flags):
+        stats = global_stats.get(col)
+        if stats is None:
             norm_params.append(('none',))
-    
-    # Pré-allocation des tableaux
+        elif use_log:
+            log_min = stats['log_min']
+            log_range = np.log10(stats['max']) - log_min
+            norm_params.append(('log', log_min, log_range))
+        else:
+            min_val = stats['min']
+            range_val = stats['max'] - min_val
+            norm_params.append(('linear', min_val, range_val))
+
+    # Parcours des fenêtres
     for window_id in ref_windows:
         if data_ref is not data and window_id not in data_windows:
             windows.append(empty_padding.copy())
             continue
-            
+
         win_data = data[data['window'] == window_id]
         win_features = []
-        
-        # Pré-allocation pour les sources
+
         for src in win_data:
             src_features = []
             for col_idx, col in enumerate(selected_columns):
-                if col not in src.colnames:
+                if col not in win_data.colnames:
                     src_features.append(PAD_TOKEN)
                     continue
-                    
+
                 val = src[col]
                 if np.isnan(val) or np.isinf(val):
                     src_features.append(PAD_TOKEN)
@@ -575,47 +590,140 @@ def discretise_et_complete(data_ref, data, n_bins, global_stats, selected_column
                     src_features.append(PAD_TOKEN)
                     #print("Pb derriere nous?")
                     continue
-                    
+
                 norm_type, *params = norm_params[col_idx]
-                
+
                 if norm_type == 'log':
-                    safe_val = max(val, 1e-30) if val <= 0 else val
-                    log_val = np.log10(safe_val)
+                    if val <= 0:
+                        src_features.append(PAD_TOKEN)
+                        continue
+                    log_val = np.log10(val)
                     norm_val = (log_val - params[0]) / params[1]
                 elif norm_type == 'linear':
                     norm_val = (val - params[0]) / params[1]
-                else:  # 'none'
-                    norm_val = val
-                
-                if np.ma.is_masked(norm_val):
+                else:
+                    norm_val = val  # aucune normalisation
 
-                    print("\nLa valeur norm_val est masquée !")
-                    print(f"col = {col}")
-                    print(f"window_id = {window_id}")
-                    print(f"norm_type = {norm_type}")
-                    print(f"params[0] = {params[0]}")
-                    print(f"params[1] = {params[1]}")
-                    print(f"col = {col}, type(val) = {type(val)}, val = {val}")
-                    print(f"val = {val}")
-                    print(f"safe_val = {safe_val}")
-                    print(f"log_val = {log_val}")
-                    print(f"log_val - params[0] = {log_val - params[0]}")
-                
                 discretized_val = int(np.clip(norm_val * n_bins_minus_1, 0, n_bins_minus_1))
                 src_features.append(discretized_val)
-            
+
             win_features.append(src_features)
-        
-        # Padding si nécessaire
+
+        # Padding
         num_pad = max_sources - len(win_features)
         if num_pad > 0:
-            current_pad_length = len(win_features[0]) if win_features else pad_length
-            padding = [[PAD_TOKEN] * current_pad_length for _ in range(num_pad)]
+            padding = [[PAD_TOKEN] * pad_length for _ in range(num_pad)]
             win_features.extend(padding)
-        
+
         windows.append(win_features)
-    
+
     return np.array(windows)
+
+
+
+
+
+
+
+def verifier_discretisation(data, selected_columns, log_scale_flags, column_to_check, n_bins, max_sources, stats_Xamin):
+    """
+    Discretizes selected numerical columns for each window, using either linear or logarithmic 
+    scaling based on the provided flags.
+
+    For each window in `data_ref`, this function looks up corresponding sources in `data`, extracts 
+    the specified `selected_columns`, normalizes the values (using log or linear scaling), and 
+    discretizes them into `n_bins` integer bins. Invalid values (e.g., NaN, inf, or non-positive 
+    values when log-scaling) are replaced with `PAD_TOKEN`. Windows are padded with dummy rows 
+    up to `max_sources` to ensure uniform output shape.
+
+    Parameters:
+    - data_ref: Reference table containing the full list of windows to process.
+    - data: Table containing the actual data to be discretized.
+    - n_bins: Total number of discrete bins.
+    - global_stats: Dictionary with normalization stats per column (min, max, and log_min).
+    - selected_columns: List of columns to process.
+    - log_scale_flags: Boolean list indicating whether to use log scale per column.
+    - PAD_TOKEN: Value used for padding and invalid/missing data.
+    - max_sources: Maximum number of sources per window (for fixed-size output).
+
+    Returns:
+    - A NumPy array of shape (n_windows, max_sources, n_columns), containing discretized values 
+      or `PAD_TOKEN` where data is missing or invalid.
+    """
+    if column_to_check not in selected_columns:
+        print(f"\nErreur: La colonne '{column_to_check}' n'est pas dans selected_columns\n")
+        return
+    
+    #print(f"\nStatistiques globales pour '{column_to_check}':")
+    #print(f"Min: {stats_Xamin[column_to_check]['min']}")
+    #print(f"Max: {stats_Xamin[column_to_check]['max']}")
+    #print(f"Log min: {stats_Xamin[column_to_check]['log_min']}")
+    
+    # Étape 2: Discrétiser les données
+    discretized = discretise_et_complete(data, data, n_bins, stats_Xamin, 
+                                        selected_columns, log_scale_flags, 
+                                        PAD_TOKEN, max_sources)
+    
+    # Trouver l'index de la colonne à vérifier
+    col_idx = selected_columns.index(column_to_check)
+    
+    # Extraire les valeurs originales et discrétisées
+    original_values = data[column_to_check]
+    original_values = original_values[~np.isnan(original_values)]
+    
+    discretized_values = discretized[:, :, col_idx].flatten()
+    discretized_values = discretized_values[discretized_values != PAD_TOKEN]
+    
+    # Tracer les histogrammes
+    plt.figure(figsize=(18, 6))
+    
+    # Couleurs et styles personnalisés
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Bleu, Orange, Vert
+    edge_colors = ['#0c4a8e', '#cc5500', '#1a5e1a']
+    alpha = 0.8
+    histtype = 'bar'  # ou 'stepfilled' pour un look différent
+    
+    # 1. Histogramme des valeurs originales (linéaire)
+    plt.subplot(1, 3, 1)
+    plt.hist(original_values, bins=50, color=colors[0], edgecolor=edge_colors[0],
+             alpha=alpha, histtype=histtype, linewidth=1.5)
+    plt.xlabel(column_to_check, fontsize=12)
+    plt.title('Valeurs originales (linéaire)', fontsize=14, pad=20)
+    plt.ylabel('Fréquence', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    
+    # 2. Histogramme des valeurs originales (log si applicable)
+    plt.subplot(1, 3, 2)
+    if log_scale_flags[col_idx]:
+        positive_vals = original_values[original_values > 0]
+        plt.hist(np.log10(positive_vals), bins=50, color=colors[1], edgecolor=edge_colors[1],
+                 alpha=alpha, histtype=histtype, linewidth=1.5)
+        plt.xlabel(f'log({column_to_check})', fontsize=12)
+        plt.title('Valeurs originales (log)', fontsize=14, pad=20)
+    else:
+        plt.hist(original_values, bins=50, color=colors[1], edgecolor=edge_colors[1],
+                 alpha=alpha, histtype=histtype, linewidth=1.5)
+        plt.xlabel(column_to_check, fontsize=12)
+        plt.title('Valeurs originales (linéaire)', fontsize=14, pad=20)
+    plt.ylabel('Fréquence', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    
+    # 3. Histogramme des valeurs discrétisées
+    plt.subplot(1, 3, 3)
+    plt.hist(discretized_values, bins=min(n_bins, 50), color=colors[2], edgecolor=edge_colors[2],
+             alpha=alpha, histtype=histtype, linewidth=1.5)
+    plt.xlabel(f'{column_to_check} discrétisée', fontsize=12)
+    plt.title(f'Valeurs discrétisées ({n_bins} bins)', fontsize=14, pad=20)
+    plt.ylabel('Fréquence', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/hist_{column_to_check}.png')
+    
+    # Afficher quelques statistiques
+    #print(f"\nValeurs originales (non-NaN): {len(original_values)}")
+    #print(f"Valeurs discrétisées (non-PAD): {len(discretized_values)}")
+    #print(f"Plage des valeurs discrétisées: {np.min(discretized_values)} à {np.max(discretized_values)}")
 
 
 
@@ -700,3 +808,43 @@ def process_and_save_chunks(directory, output_path, stats_Xamin, max_sources):
             del current_windows, current_info_class, windows, X
     
     print(f"Tous les chunks ont été traités et sauvegardés dans {output_path}")
+
+
+
+
+def verify_table(table, table_name):
+    print(f"\n======= Verifying {table_name} =======")
+    print(f"- Number of rows: {len(table)}")
+    
+    if hasattr(table, 'mask'):
+        # Pour les tables Astropy
+        masked_rows = 0
+        total_masked = 0
+        col_masks = {}
+        
+        # Vérifier chaque colonne
+        for col in table.colnames:
+            if hasattr(table[col], 'mask'):
+                col_mask = table[col].mask
+                if isinstance(col_mask, np.ndarray):
+                    col_masked = np.sum(col_mask)
+                    if col_masked > 0:
+                        col_masks[col] = col_masked
+                        total_masked += col_masked
+                        masked_rows = max(masked_rows, np.sum(col_mask))
+        
+        if col_masks:
+            print(f"- Contains masked values")
+            print(f"- Number of rows with masked values: {masked_rows}/{len(table)} "
+                  f"({masked_rows/len(table):.1%})")
+            print(f"- Total masked values: {total_masked}")
+            
+            print("\nMasked values per column:")
+            for col, count in col_masks.items():
+                print(f"  - {col}: {count} masked values")
+        else:
+            print("- No masked values detected (empty mask)")
+    else:
+        print("- No masked values detected")
+    
+    print(f"- Columns: {table.colnames}")

@@ -10,7 +10,7 @@ This project implements a Transformer-based neural network to analyze astronomic
 TransformerProject/
 
 ├── src/
-│   ├── Constantes.py            # Configuration parameters and constants
+│   ├── `Constantes.py`            # Configuration parameters and constants
 │   ├── Fct_tokenisation.py      # Core functions for data processing
 │   ├── FiltrageDonneesEntree.py # Initial data filtering and correlation
 │   ├── Tokenisation.py          # Data tokenization pipeline
@@ -54,9 +54,9 @@ sbatch submit_tokenisation.sh
 
 This runs:
 
-- FiltrageDonneesEntree.py: Performs spatial matching between input catalogs and Xamin data
+- `FiltrageDonneesEntree.py`: Performs spatial matching between input catalogs and Xamin data
 
-- Tokenisation.py: Processes the matched data into tokenized sequences
+- `Tokenisation.py`: Processes the matched data into tokenized sequences
 
 2. Model Training
 Train the Transformer model:
@@ -72,43 +72,43 @@ sbatch submit_GenerateSequence.sh
 
 ## **Configuration**
 
-Key parameters are defined in Constantes.py:
+Key parameters are defined in `Constantes.py`:
 
 Catalog Selection
 
-- catalog_path_AMAS: Path to galaxy clusters catalog
+- `catalog_path_AMAS`: Path to galaxy clusters catalog
 
-- catalog_path_AGN: Path to AGN catalog
+- `catalog_path_AGN`: Path to AGN catalog
 
-- catalog_path_aftXamin: Path to X-ray source catalog
+- `catalog_path_aftXamin`: Path to X-ray source catalog
 
 Matching Parameters
 
-- SEARCH_RADIUS_CLUSTER: Matching radius for clusters (20 arcsec)
+- `SEARCH_RADIUS_CLUSTER`: Matching radius for clusters (20 arcsec)
 
-- SEARCH_RADIUS_AGN: Matching radius for AGN (10 arcsec)
+- `SEARCH_RADIUS_AGN`: Matching radius for AGN (10 arcsec)
 
-- LIM_FLUX_CLUSTER: Minimum flux for clusters (5×10⁻¹⁵ erg/cm²/s)
+- `LIM_FLUX_CLUSTER`: Minimum flux for clusters (5×10⁻¹⁵ erg/cm²/s)
 
-- LIM_FLUX_AGN: Minimum flux for AGN (5×10⁻¹⁵ erg/cm²/s)
+- `LIM_FLUX_AGN`: Minimum flux for AGN (5×10⁻¹⁵ erg/cm²/s)
 
 Window Parameters
 
-- WINDOW_SIZE_ARCMIN: Window size (2 arcmin)
+- `WINDOW_SIZE_ARCMIN`: Window size (2 arcmin)
 
-- MAX_Xamin_PAR_FENESTRON: Maximum sources per window (2)
+- `MAX_Xamin_PAR_FENESTRON`: Maximum sources per window (2)
 
 Transformer Configuration
 
-- VOCAB_SIZE: Token vocabulary size (1029)
+- `VOCAB_SIZE`: Token vocabulary size (1029)
 
-- D_MODEL: Model dimension (256)
+- `D_MODEL`: Model dimension (256)
 
-- NUM_HEADS: Number of attention heads (8)
+- `NUM_HEADS`: Number of attention heads (8)
 
-- NUM_LAYERS: Number of transformer layers (6)
+- `NUM_LAYERS`: Number of transformer layers (6)
 
-- BATCH_SIZE: Training batch size (32)
+- `BATCH_SIZE`: Training batch size (32)
 
 ## **Data Processing Workflow**
 
@@ -119,6 +119,22 @@ Transformer Configuration
 - Applies flux cuts to select significant sources
 
 - Splits data into training (Dec > 2.15°) and test sets: Splits data into training and test sets to keep approximately 80% of the data for training and 20% for testing the model.
+
+**Data Processing Functions (Fct_tokenisation.py)**
+
+- `CreateListID_Xamin()`: Creates combined ID lists with controlled proportions
+
+- `Batisseuse2Fenetres()`: Builds windows around Xamin sources with recentered coordinates
+
+- `GardeFenestronsSousPeuples()`: Filters windows to keep only those with limited sources
+
+- `random_rotations_and_mirror()`: Applies optimized rotations/mirroring using Numba
+
+- `process_rotations_in_chunks()`: Handles large-scale rotations in manageable chunks
+
+- `discretise_et_complete()`: Normalizes and tokenizes data with padding
+
+- `combine_and_flatten_with_special_tokens()`: Creates final token sequences
 
 **Window Creation:**
 
@@ -162,11 +178,11 @@ Autoregressive sequence generation
 
 The pipeline generates:
 
-- X_train.txt, X_test.txt: Tokenized sequences
+- `X_train.txt`, `X_test.txt`: Tokenized sequences
 
-- model_weights.h5: Trained model weights
+- `model_weights.h5`: Trained model weights
 
-- constantes_du_modele.json: Model configuration
+- `constantes_du_modele.json`: Model configuration
 
 - Global statistics files for each data type
 
@@ -175,23 +191,23 @@ The pipeline generates:
 ## **Customization**
 To modify the analysis:
 
-Adjust parameters in Constantes.py
+Adjust parameters in `Constantes.py`
 
 Update selected columns in:
 
-- SELECTED_COLUMNS_Xamin
+- `SELECTED_COLUMNS_Xamin`
 
-- SELECTED_COLUMNS_input_clusters
+- `SELECTED_COLUMNS_input_clusters`
 
-- SELECTED_COLUMNS_input_AGN
+- `SELECTED_COLUMNS_input_AGN`
 
 Correspondingly update the scaling flags:
 
-- use_log_scale_Xamin
+- `use_log_scale_Xamin`
 
-- use_log_scale_input_clusters
+- `use_log_scale_input_clusters`
 
-- use_log_scale_input_AGN
+- `use_log_scale_input_AGN`
 
 ## Performance Notes
 

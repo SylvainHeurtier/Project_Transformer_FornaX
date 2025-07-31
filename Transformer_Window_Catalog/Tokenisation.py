@@ -12,11 +12,13 @@ from astropy.table import Table, vstack
 from astropy.table import join
 from collections import Counter
 import Fct_tokenisation
-from Fct_tokenisation import CreateListID_Xamin, Batisseuse2Fenetres, GardeFenestronsSousPeuples, CompteSourcesParFenetres, compute_global_stats, discretise_et_complete, convert_numpy_types, process_rotations_in_chunks, process_and_save_chunks
+from Fct_tokenisation import CreateListID_Xamin, Batisseuse2Fenetres, GardeFenestronsSousPeuples 
+from Fct_tokenisation import CompteSourcesParFenetres, compute_global_stats, convert_numpy_types
+from Fct_tokenisation import process_rotations_in_chunks, process_and_save_chunks, verifier_discretisation, verify_table
 
 from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, TOTAL_ROTATIONS, CHUNK_SIZE
 from Constantes import path_list_ID_Xamin_AMAS, path_list_ID_Xamin_AGN
-from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN
+from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN, use_log_scale_Xamin
 from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
 from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, name_dir
 from Constantes import catalog_path_aftXamin, new_catalog_path_AGN, new_catalog_path_AMAS
@@ -134,13 +136,26 @@ list_windows_train, info_clusters_train, info_AGN_train = Batisseuse2Fenetres(da
 
 print(f"\n✓ Fenêtres train construites")  # ✓ Vert avec reset
 
+'''
+print("\n ///////////   TEST 1    ///////////")
+verify_table(list_windows_train, "list_windows_train")
+verify_table(info_clusters_train, "info_clusters_train")
+verify_table(info_AGN_train, "info_AGN_train")
+print("\n //////////////////////////////////")
+'''
 
 list_windows_test  = list_windows_test[SELECTED_COLUMNS_Xamin + ['window']]
 list_windows_train = list_windows_train[SELECTED_COLUMNS_Xamin + ['window']]
 
+'''
+print("\n ///////////   TEST 2    ///////////")
+verify_table(list_windows_train, "list_windows_train")
+verify_table(info_clusters_train, "info_clusters_train")
+verify_table(info_AGN_train, "info_AGN_train")
+print("\n //////////////////////////////////")
+'''
 
 # //////////// Selection des fenetres les moins peuplees ////////////
-
 
 list_windows_test, info_clusters_test, info_AGN_test = GardeFenestronsSousPeuples(list_windows_test, 
                                                                                   info_clusters_test, 
@@ -171,6 +186,8 @@ MAX_AGN = max(max_count_AGN_train, max_count_AGN_test)
 print(f"\nMAX_SOURCES : {MAX_SOURCES}")
 print(f"MAX_CLUSTERS : {MAX_CLUSTERS}")
 print(f"MAX_AGN : {MAX_AGN}")
+
+
 
 
 
@@ -210,6 +227,42 @@ global_stats_Xamin, global_stats_input_clusters, global_stats_input_AGN = \
                             stats_input_clusters = global_stats_input_clusters, 
                             stats_input_AGN = global_stats_input_AGN)
 
+
+# //////////// Plot pour verifier la discretisation des données ////////////
+
+
+verifier_discretisation(list_windows_train, SELECTED_COLUMNS_Xamin, use_log_scale_Xamin,
+                        column_to_check = 'EXT', 
+                        n_bins = VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX, 
+                        max_sources = MAX_SOURCES,
+                        stats_Xamin = global_stats_Xamin)
+
+
+verifier_discretisation(list_windows_train,  SELECTED_COLUMNS_Xamin, use_log_scale_Xamin,
+                        column_to_check = 'PNT_DET_ML', 
+                        n_bins = VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX, 
+                        max_sources = MAX_SOURCES,
+                        stats_Xamin = global_stats_Xamin)
+
+verifier_discretisation(list_windows_train, SELECTED_COLUMNS_Xamin, use_log_scale_Xamin,
+                        column_to_check = 'EXT_LIKE', 
+                        n_bins = VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX, 
+                        max_sources = MAX_SOURCES,
+                        stats_Xamin = global_stats_Xamin)
+
+
+verifier_discretisation(list_windows_train, SELECTED_COLUMNS_Xamin, use_log_scale_Xamin,
+                        column_to_check = 'EXT_RA', 
+                        n_bins = VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX, 
+                        max_sources = MAX_SOURCES,
+                        stats_Xamin = global_stats_Xamin)
+
+
+verifier_discretisation(list_windows_train, SELECTED_COLUMNS_Xamin, use_log_scale_Xamin,
+                        column_to_check = 'EXT_DEC', 
+                        n_bins = VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX, 
+                        max_sources = MAX_SOURCES,
+                        stats_Xamin = global_stats_Xamin)
 
 
 # //////////// Discretisation des données ////////////
