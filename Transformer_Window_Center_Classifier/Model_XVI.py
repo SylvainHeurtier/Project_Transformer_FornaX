@@ -24,7 +24,7 @@ print("#" + " " * (largeur-2) + "#")
 print("#" * largeur)
 
 #////////// Load Configuration /////////
-with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/constantes_du_modele.json", 'r') as f:
+with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/constantes_du_modele.json", 'r') as f:
     config = json.load(f)
 
 MAX_SOURCES  = config["MAX_SOURCES"]
@@ -40,11 +40,11 @@ print("└───────────────────────�
 
 # Load data
 
-X_train = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.txt', dtype=np.int32)
-X_test = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.txt', dtype=np.int32)
+X_train = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.txt', dtype=np.int32)
+X_test = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.txt', dtype=np.int32)
 
-#X_train = np.load(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.npy')
-#X_test = np.load(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.npy')
+#X_train = np.load(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.npy')
+#X_test = np.load(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.npy')
 
 print(f"\nDim de X_train: {X_train.shape}") # Devrait être (n_windows,  len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + len(SELECTED_COLUMNS_input_clusters) * MAX_CLUSTERS * 2 + len(SELECTED_COLUMNS_input_AGN) * MAX_AGN * 2 + 4)
 print(f"Dim de X_test: {X_test.shape}") # Devrait être (n_windows,  len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + len(SELECTED_COLUMNS_input_clusters) * MAX_CLUSTERS * 2 + len(SELECTED_COLUMNS_input_AGN) * MAX_AGN * 2 + 4)
@@ -210,9 +210,9 @@ plt.xlabel('Steps (x100)')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plt.savefig(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/training_curves_tf.png')
+plt.savefig(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/training_curves_tf.png')
 
 # Save model
-model.save_weights(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/model_weights.h5')
+model.save_weights(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/model_weights.h5')
 
 print("Training complete!")

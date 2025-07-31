@@ -30,8 +30,7 @@ from Constantes import LIM_FLUX_CLUSTER, LIM_FLUX_AGN
 from Constantes import SEARCH_RADIUS_CLUSTER, SEARCH_RADIUS_AGN
 from Constantes import WINDOW_SIZE_ARCMIN, NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON
 from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
-from Constantes import catalog_path_aftXamin, catalog_path_AGN, catalog_path_AMAS
-from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN
+from Constantes import SELECTED_COLUMNS_Xamin, use_log_scale_Xamin
 from Constantes import print_parameters
 
 print_parameters()
@@ -84,10 +83,7 @@ def CreateListID_Xamin(all_xamin_ids, list_id_xamin_amas, proportion=1):
 
 
 
-def Batisseuse2Fenetres(data_Xamin, data_clusters, data_AGN, list_ID_Xamin, 
-                        cluster_columns_to_keep = ['window', 'R.A.', 'Dec', 'm200', 'z'],
-                        #AGN_columns_to_keep = ['window', 'ra_mag_gal', 'dec_mag_gal', 'observed_redshift_gal', 'log_stellar_mass_h70'],
-                        AGN_columns_to_keep = ['window', 'ra_mag_gal', 'dec_mag_gal'],
+def Batisseuse2Fenetres(data_Xamin, list_ID_Xamin, list_ID_Xamin_clusters,
                         window_size_arcmin = WINDOW_SIZE_ARCMIN):
     """
     Extracts sources, clusters, and AGNs within windows centered on Xamin IDs.
@@ -110,8 +106,10 @@ def Batisseuse2Fenetres(data_Xamin, data_clusters, data_AGN, list_ID_Xamin,
     half_size_deg = (window_size_arcmin / 60) / 2
     
     selected_src = [] # Liste pour stocker toutes les lignes sélectionnées
-    selected_clusters = []
-    selected_AGN = []
+    
+    info_class = Table()
+    info_class['window'] = np.array([], dtype=int)
+    info_class['isCluster'] = np.array([], dtype=int) 
     
     for window_num, id in enumerate(list_ID_Xamin):
 
@@ -155,85 +153,15 @@ def Batisseuse2Fenetres(data_Xamin, data_clusters, data_AGN, list_ID_Xamin,
             selected_src.append(sources_in_window) # Ajouter aux lignes sélectionnées
 
         # CLUSTERS PART
-
-        coords_clusters = SkyCoord(ra=data_clusters['R.A.']*u.deg, dec=data_clusters['Dec']*u.deg)
-
-        delta_ra_clusters  = np.abs(coords_clusters.ra.deg - ra_center)
-        delta_dec_clusters = np.abs(coords_clusters.dec.deg - dec_center)
-        delta_ra_clusters  = np.minimum(delta_ra_clusters, 360 - delta_ra_clusters)
-        
-        mask_clusters_in_window = (delta_ra_clusters < half_size_deg) & (delta_dec_clusters < half_size_deg)
-
-        clusters_in_window = data_clusters[mask_clusters_in_window]
-
-        if len(clusters_in_window) > 0:
-            sources_coords_clusters = SkyCoord(ra=clusters_in_window['R.A.']*u.deg, dec=clusters_in_window['Dec']*u.deg)
-            separations = sources_coords_clusters.separation(center)
-            
-            # Ajouter la séparation comme colonne temporaire
-            clusters_in_window = clusters_in_window.copy()
-            clusters_in_window['separation_deg'] = separations.deg
-            clusters_in_window['window'] = window_num
-
-            ra_col = "R.A."
-            dec_col = "Dec"
-            
-            if ra_col in clusters_in_window.colnames and dec_col in clusters_in_window.colnames:
-                orig_coords = SkyCoord(ra=clusters_in_window[ra_col]*u.deg, 
-                                        dec=clusters_in_window[dec_col]*u.deg)
-                dra, ddec = orig_coords.spherical_offsets_to(center)
-                clusters_in_window[ra_col] = dra.to(u.deg).value
-                clusters_in_window[dec_col] = ddec.to(u.deg).value
-
-            clusters_in_window.sort('separation_deg') # Trier par distance au centre
-            clusters_in_window = clusters_in_window[cluster_columns_to_keep]
-
-            selected_clusters.append(clusters_in_window) # Ajouter aux lignes sélectionnées
-
-        
-        # AGN PART
-
-        coords_AGN = SkyCoord(ra=data_AGN['ra_mag_gal']*u.deg, dec=data_AGN['dec_mag_gal']*u.deg)
-
-        delta_ra_AGN  = np.abs(coords_AGN.ra.deg - ra_center)
-        delta_dec_AGN = np.abs(coords_AGN.dec.deg - dec_center)
-        delta_ra_AGN  = np.minimum(delta_ra_AGN, 360 - delta_ra_AGN)
-        
-        mask_AGN_in_window = (delta_ra_AGN < half_size_deg) & (delta_dec_AGN < half_size_deg)
-
-        AGN_in_window = data_AGN[mask_AGN_in_window]
-
-        if len(AGN_in_window) > 0:
-            sources_coords_AGN = SkyCoord(ra=AGN_in_window['ra_mag_gal']*u.deg, dec=AGN_in_window['dec_mag_gal']*u.deg)
-            separations = sources_coords_AGN.separation(center)
-            
-            # Ajouter la séparation comme colonne temporaire
-            AGN_in_window = AGN_in_window.copy()
-            AGN_in_window['separation_deg'] = separations.deg
-            AGN_in_window['window'] = window_num
-
-            ra_col = "ra_mag_gal"
-            dec_col = "dec_mag_gal"
-            
-            if ra_col in AGN_in_window.colnames and dec_col in AGN_in_window.colnames:
-                orig_coords = SkyCoord(ra=AGN_in_window[ra_col]*u.deg, 
-                                        dec=AGN_in_window[dec_col]*u.deg)
-                dra, ddec = orig_coords.spherical_offsets_to(center)
-                AGN_in_window[ra_col] = dra.to(u.deg).value
-                AGN_in_window[dec_col] = ddec.to(u.deg).value
-
-            AGN_in_window.sort('separation_deg') # Trier par distance au centre
-            AGN_in_window = AGN_in_window[AGN_columns_to_keep]
-
-            selected_AGN.append(AGN_in_window) # Ajouter aux lignes sélectionnées
-
+        if id in list_ID_Xamin_clusters:
+            info_class.add_row([window_num, 1])  # Ajoute une ligne (window, isCluster)
+        else:
+            info_class.add_row([window_num, 0])
 
     # Ajouter toutes les lignes sélectionnées à la table de sortie
     list_windows = vstack(selected_src)
-    info_clusters = vstack(selected_clusters)
-    info_AGN = vstack(selected_AGN)
 
-    return list_windows, info_clusters, info_AGN
+    return list_windows, info_class
 
 
 
@@ -245,24 +173,22 @@ def Batisseuse2Fenetres(data_Xamin, data_clusters, data_AGN, list_ID_Xamin,
 
 
 
-def GardeFenestronsSousPeuples(list_windows, info_clusters, info_AGN, max_Xamin_par_fenestron):
+def GardeFenestronsSousPeuples(list_windows, info_class, max_Xamin_par_fenestron):
     """
-    Filtre trois tables Astropy connexes pour ne conserver que les fenestrons (windows)
+    Filtre les tables Astropy connexes list_windows, info_class pour ne conserver que les fenestrons (windows)
     ayant un nombre de sources Xamin <= max_Xamin_par_fenestron.
 
     La fonction opère en 3 étapes :
     1. Calcule le nombre de sources par fenestron dans list_windows
     2. Identifie les fenestrons sous-peuplés (<= max_Xamin_par_fenestron)
-    3. Filtre les trois tables en conservant uniquement ces fenestrons
+    3. Filtre les deux tables en conservant uniquement ces fenestrons
 
     Parameters
     ----------
     list_windows : astropy.table.Table
         Table principale contenant les sources Xamin avec colonne 'window'
-    info_clusters : astropy.table.Table
-        Table d'amas associée avec colonne 'window'
-    info_AGN : astropy.table.Table
-        Table d'AGN associée avec colonne 'window'
+    info_class : astropy.table.Table
+        Table indiquant la classe de la source centrale associée avec colonne 'window'
     max_Xamin_par_fenestron : int
         Seuil maximal de sources Xamin par fenestron
 
@@ -270,12 +196,11 @@ def GardeFenestronsSousPeuples(list_windows, info_clusters, info_AGN, max_Xamin_
     -------
     tuple (astropy.table.Table, astropy.table.Table, astropy.table.Table)
         - list_windows filtrée
-        - info_clusters filtrée
-        - info_AGN filtrée
+        - info_class filtrée
 
     Notes
     -----
-    - Les trois tables en entrée doivent avoir une colonne 'window'
+    - Les deux tables en entrée doivent avoir une colonne 'window'
     - Le filtrage est basé exclusivement sur le comptage dans list_windows
     - Les relations entre tables sont préservées dans le résultat
     """
@@ -287,22 +212,10 @@ def GardeFenestronsSousPeuples(list_windows, info_clusters, info_AGN, max_Xamin_
     mask_Xamin = np.isin(list_windows['window'], valid_windows)
     filtered_list_windows = list_windows[mask_Xamin]
     
-    mask_amas = np.isin(info_clusters['window'], valid_windows)
-    filtered_info_clusters = info_clusters[mask_amas]
+    mask_amas = np.isin(info_class['window'], valid_windows)
+    filtered_info_class = info_class[mask_amas]
 
-    mask_AGN = np.isin(info_AGN['window'], valid_windows)
-    filtered_info_AGN = info_AGN[mask_AGN]
-
-    return filtered_list_windows, filtered_info_clusters, filtered_info_AGN
-
-
-
-
-
-def CompteSourcesParFenetres(list_windows_type):
-    counter_sources = Counter(list_windows_type['window']) # Compte les occurrences de chaque valeur de 'window'
-    most_common_window, max_count_sources = counter_sources.most_common(1)[0] # Trouve la valeur avec le max d'occurrences
-    return max_count_sources
+    return filtered_list_windows, filtered_info_class
 
 
 
@@ -349,19 +262,19 @@ def vstack_prealloc(tables):
 
 
 
-def random_rotations_and_mirror(list_windows, info_clusters, info_AGN, NumberOfRotations):
+def random_rotations_and_mirror(list_windows, info_class, NumberOfRotations):
     """
     Applique des rotations aléatoires et des symétries miroir aux coordonnées RA/Dec
     avec optimisation CPU utilisant NumPy et Numba.
     
     Paramètres :
         list_windows : Table contenant les sources
-        info_clusters : Table contenant les clusters
+        info_class : indiquant la classe de la source centrale
         NumberOfRotations : nombre de rotations à générer par fenêtre
         
     Retour :
         list_windows_augm : table des sources augmentées
-        info_clusters_augm : table des clusters augmentés
+        info_class_augm : table des classes augmentées
     """
     
     coord_suffixes = ['EXT', 'PNT', 'DBL', 'EPN']
@@ -380,35 +293,14 @@ def random_rotations_and_mirror(list_windows, info_clusters, info_AGN, NumberOfR
 
     # //////////// Préparer les résultats ////////////
 
-    inclure_originaux = False
+    inclure_originale = False
 
-    if(inclure_originaux): # (inclure les originaux)
-
+    if(inclure_originale): # (inclure la version originale)
         augmented_windows = [list_windows.copy()]
-
-        # ***** AMAS *****
-        if len(info_clusters) > 0:
-            augmented_cluster = [info_clusters.copy()]
-            has_cluster_data = True
-        else:
-            augmented_cluster = []
-            has_cluster_data = False
-        
-        # ***** AGN *****
-        if len(info_AGN) > 0:
-            augmented_AGN = [info_AGN.copy()]
-            has_AGN_data = True
-        else:
-            augmented_AGN = []
-            has_AGN_data = False
-    
-    else: # (ne pas inclure les originaux)
+        info_class_augm = [info_class.copy()]
+    else: 
         augmented_windows = []
-        augmented_cluster = []
-        augmented_AGN = []
-        
-        has_cluster_data = len(info_clusters) > 0
-        has_AGN_data = len(info_AGN) > 0
+        info_class_augm = []
 
     # Fonctions optimisées avec Numba
     @numba.njit(fastmath=True)
@@ -429,27 +321,11 @@ def random_rotations_and_mirror(list_windows, info_clusters, info_AGN, NumberOfR
     rng = np.random.default_rng()
     all_rotation_angles = rng.uniform(0, 2*np.pi, size=(len(unique_windows), NumberOfRotations))
     
-    # Traitement par fenêtre avec barre de progression
+    # Traitement par fenêtre 
     for i, win in enumerate(unique_windows):
         win_mask = list_windows['window'] == win
         sub_src = list_windows[win_mask]
         
-        # ***** AMAS *****
-        if has_cluster_data:
-            mask_culster = info_clusters['window'] == win
-            sub_cluster = info_clusters[mask_culster]
-            has_cluster = len(sub_cluster) > 0
-        else:
-            has_cluster = False
-        
-        # ***** AGN *****
-        if has_AGN_data:
-            mask_AGN = info_AGN['window'] == win
-            sub_AGN = info_AGN[mask_AGN]
-            has_AGN = len(sub_AGN) > 0
-        else:
-            has_AGN = False
-
         # /////// ROTATION ALEATOIRE ///////
         angles = all_rotation_angles[i]
         for angle in angles:
@@ -467,24 +343,9 @@ def random_rotations_and_mirror(list_windows, info_clusters, info_AGN, NumberOfR
             # Mettre à jour le numéro de fenêtre
             rotated_src['window'] = max_window_num + 1
             augmented_windows.append(rotated_src)
-            
-            # ***** AMAS *****
-            if has_cluster:
-                rotated_cluster = sub_cluster.copy()
-                new_ra, new_dec = apply_rotation(rotated_cluster['R.A.'][0], rotated_cluster['Dec'][0], angle)
-                rotated_cluster['R.A.'] = new_ra
-                rotated_cluster['Dec'] = new_dec
-                rotated_cluster['window'] = max_window_num + 1
-                augmented_cluster.append(rotated_cluster)
 
-            # ***** AGN *****
-            if has_AGN:
-                rotated_AGN = sub_AGN.copy()
-                new_ra, new_dec = apply_rotation(rotated_AGN['ra_mag_gal'][0], rotated_AGN['dec_mag_gal'][0], angle)
-                rotated_AGN['ra_mag_gal'] = new_ra
-                rotated_AGN['dec_mag_gal'] = new_dec
-                rotated_AGN['window'] = max_window_num + 1
-                augmented_AGN.append(rotated_AGN)
+            is_cluster = info_class[info_class['window'] == win]['isCluster'][0]
+            info_class_augm.append((max_window_num + 1, is_cluster))
             
             max_window_num += 1
         
@@ -498,126 +359,25 @@ def random_rotations_and_mirror(list_windows, info_clusters, info_AGN, NumberOfR
         mirrored_src['window'] = max_window_num + 1
         augmented_windows.append(mirrored_src)
         
-        if has_cluster:
-            mirrored_cluster = sub_cluster.copy()
-            mirrored_cluster['R.A.'] = apply_mirror(mirrored_cluster['R.A.'])
-            mirrored_cluster['window'] = max_window_num + 1
-            augmented_cluster.append(mirrored_cluster)
-
-        if has_AGN:
-            mirrored_AGN = sub_AGN.copy()
-            mirrored_AGN['ra_mag_gal'] = apply_mirror(mirrored_AGN['ra_mag_gal'])
-            mirrored_AGN['window'] = max_window_num + 1
-            augmented_AGN.append(mirrored_AGN)
+        is_cluster = info_class[info_class['window'] == win]['isCluster'][0]
+        info_class_augm.append((max_window_num + 1, is_cluster))
 
         max_window_num += 1
     
     # Concaténer tous les résultats
     list_windows_augm = vstack_prealloc(augmented_windows)
-    info_clusters_augm = vstack_prealloc(augmented_cluster) if augmented_cluster else info_clusters.copy(copy_data=False)
-    info_AGN_augm = vstack_prealloc(augmented_AGN) if augmented_AGN else info_AGN.copy(copy_data=False)
 
-    return list_windows_augm, info_clusters_augm, info_AGN_augm
+    #info_class_augm = np.array(info_class_augm)
+    #info_class_augm = Table(info_class_augm, names=('window', 'isCluster'), dtype=('int', 'int'))
+    info_class_augm = Table(rows=info_class_augm, names=('window', 'isCluster'), dtype=('int', 'int'))
 
-
-
-
+    return list_windows_augm, info_class_augm
 
 
 
 
 
 
-
-def plot_augmentations(list_windows_augm, original_window_id, max_original_window_id, NumberOfRotations):
-    """
-    Version robuste qui garantit l'affichage de tous les points avec :
-    - Ajustement automatique des limites
-    - Vérification des données
-    - Meilleure visibilité des points
-    """
-    # ===== 1. Vérification des données d'entrée =====
-    if original_window_id not in list_windows_augm['window']:
-        print(f"Attention : la fenêtre {original_window_id} n'existe pas dans les données")
-        return
-    
-    # ===== 2. Sélection des points =====
-    original = list_windows_augm[list_windows_augm['window'] == original_window_id]
-    
-    # Calcul des IDs des versions augmentées
-    n_augmentations = NumberOfRotations + 1  # +1 pour le miroir
-    first_aug_id = max_original_window_id + 1 + original_window_id * n_augmentations
-    augmented_ids = list(range(first_aug_id, first_aug_id + n_augmentations))
-    
-    # ===== 3. Collecte de TOUS les points à afficher =====
-    all_points = {'ra': [], 'dec': []}
-    
-    # Points originaux
-    all_points['ra'].extend(original['PNT_RA'])
-    all_points['dec'].extend(original['PNT_DEC'])
-    
-    # Points augmentés
-    augmented_data = []
-    for i, win_id in enumerate(augmented_ids):
-        data = list_windows_augm[list_windows_augm['window'] == win_id]
-        if len(data) > 0:
-            augmented_data.append((i, win_id, data))
-            all_points['ra'].extend(data['PNT_RA'])
-            all_points['dec'].extend(data['PNT_DEC'])
-    
-    # ===== 4. Calcul des limites intelligentes =====
-    '''def compute_limits(values, margin_factor=0.2):
-        min_val = np.nanmin(values)
-        max_val = np.nanmax(values)
-        span = max_val - min_val
-        return (min_val - margin_factor*span, max_val + margin_factor*span)
-    
-    xlim = compute_limits(all_points['ra'])
-    ylim = compute_limits(all_points['dec'])'''
-    
-    # ===== 5. Création du plot =====
-    plt.figure(figsize=(4, 4))
-    
-    # Affichage original
-    plt.scatter(original['PNT_RA'], original['PNT_DEC'], 
-               c='blue', s=60, label='Original', alpha=0.8, edgecolors='w', linewidth=0.5)
-    
-    # Affichage des rotations
-    rotation_colors = ['#FF7F0E', '#D62728', '#9467BD', '#8C564B']  # Couleurs distinctes
-    for i, win_id, data in augmented_data[:-1]:  # Tous sauf le dernier (miroir)
-        plt.scatter(data['PNT_RA'], data['PNT_DEC'],
-                   c=rotation_colors[i % len(rotation_colors)], s=40,
-                   alpha=0.7, label=f'Rotation {i+1}')
-    
-    # Affichage du miroir (dernier élément)
-    if augmented_data and len(augmented_data[-1][2]) > 0:
-        plt.scatter(augmented_data[-1][2]['PNT_RA'], augmented_data[-1][2]['PNT_DEC'],
-                   c='#2CA02C', s=40, marker='s', alpha=0.7, label='Miroir')
-    
-    plt.axhline(-WINDOW_SIZE_ARCMIN/60/2, color='gray', linestyle='--')
-    plt.axhline(WINDOW_SIZE_ARCMIN/60/2, color='gray', linestyle='--')
-    plt.axvline(-WINDOW_SIZE_ARCMIN/60/2, color='gray', linestyle='--')
-    plt.axvline(WINDOW_SIZE_ARCMIN/60/2, color='gray', linestyle='--')
-
-    # ===== 6. Configuration finale =====
-    plt.xlim(-WINDOW_SIZE_ARCMIN/60/1.5, WINDOW_SIZE_ARCMIN/60/1.5)
-    plt.ylim(-WINDOW_SIZE_ARCMIN/60/1.5, WINDOW_SIZE_ARCMIN/60/1.5)
-    plt.xlabel('Right Ascension (deg)', fontsize=12)
-    plt.ylabel('Declination (deg)', fontsize=12)
-    plt.title(f'Window {original_window_id} with {NumberOfRotations} rotations + mirror', pad=20)
-    
-    plt.legend(fontsize=10, framealpha=0.9)
-    plt.grid(True, linestyle='--', alpha=0.3)
-    plt.tight_layout()
-    
-    # Ajout d'un texte d'information
-    info_text = f"Total points: Original={len(original)}"
-    for i, (_, _, data) in enumerate(augmented_data):
-        info_text += f", Aug{i+1}={len(data)}"
-    plt.annotate(info_text, xy=(0.5, 0.02), xycoords='axes fraction',
-                ha='center', fontsize=9, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    plt.show()
 
 
 
@@ -669,6 +429,89 @@ def compute_global_stats(data, selected_columns, global_stats=None):
 
 
 
+
+
+
+
+
+
+
+
+def save_current_state(windows, info_class, output_dir, chunk_num):
+    """Sauvegarde l'état courant dans des fichiers FITS"""
+    windows.write(os.path.join(output_dir, f"windows_{chunk_num:04d}.fits"), overwrite=True)
+    
+    info_class.write(os.path.join(output_dir, f"class_{chunk_num:04d}.fits"), overwrite=True)
+    
+    
+
+
+
+
+
+
+
+
+def process_rotations_in_chunks(list_windows, info_class,
+                              total_rotations, chunk_size, output_dir,
+                              stats_Xamin):
+    """
+    Applique les rotations par chunks et sauvegarde les résultats sans retourner de valeur
+    
+    Paramètres :
+        list_windows: Table Astropy des sources
+        info_class: Table Astropy indiquant source centrale amas ou pas
+        total_rotations: Nombre total de rotations à appliquer
+        chunk_size: Nombre de rotations par chunk
+        output_dir: Répertoire de sortie pour les fichiers FITS
+    """
+    # Création du répertoire de sortie
+    os.makedirs(output_dir, exist_ok=True)  # Recrée le répertoire vide
+    for filename in os.listdir(output_dir):
+        if filename.endswith('.fits'): 
+            os.remove(os.path.join(output_dir, filename))
+
+    # Initialisation des données courantes
+    current_windows = list_windows.copy()
+    current_clusters = info_class.copy()
+    file_counter = 1 # Compteur de fichiers
+
+    save_current_state(
+            current_windows,
+            info_class,
+            output_dir,
+            file_counter
+        )
+    file_counter += 1
+
+    # Boucle principale
+    for start_rot in range(0, total_rotations, chunk_size):
+        actual_chunk_size = min(chunk_size, total_rotations - start_rot)
+        print(f"Processing rotations {start_rot+1}-{start_rot+actual_chunk_size}/{total_rotations}")
+        
+        # Application des rotations
+        rotated_windows, rotated_info_class = \
+            random_rotations_and_mirror(
+                list_windows,  # On part toujours des originaux
+                info_class,
+                NumberOfRotations=actual_chunk_size
+            )
+                
+        # Mise a jour des statistiques
+        stats_Xamin = compute_global_stats(rotated_windows, SELECTED_COLUMNS_Xamin, stats_Xamin)
+
+        # Sauvegarde des résultats
+        save_current_state(
+            rotated_windows,
+            rotated_info_class,
+            output_dir,
+            file_counter
+        )
+        
+        file_counter += 1
+    
+    print(f"Traitement terminé. Résultats sauvegardés dans {output_dir}")
+    return stats_Xamin
 
 
 
@@ -780,31 +623,29 @@ def discretise_et_complete(data_ref, data, n_bins, global_stats, selected_column
 
 
 
-def combine_and_flatten_with_special_tokens(windows_Xamin, windows_input_cluster, windows_input_AGN, 
-                                            cls_token = CLS_TOKEN, sep_token = SEP_TOKEN, sep_amas_token = SEP_AMAS, sep_agn_token = SEP_AGN):
+def combine_and_flatten_with_special_tokens(windows_Xamin, info_class, 
+                                            cls_token = CLS_TOKEN, sep_token = SEP_TOKEN, sep_amas_token = SEP_AMAS):
     """
     Returns 2D array of shape (n_windows, max_sources*n_features_Xamin + max_clusters*n_features_input_cluster + max_agn*n_features_input_agn + 2)
     """
     cls_token      = np.array(cls_token).flatten()
     sep_token      = np.array(sep_token).flatten()
     sep_amas_token = np.array(sep_amas_token).flatten()
-    sep_agn_token  = np.array(sep_agn_token).flatten()
 
-    if len(windows_Xamin) != len(windows_input_cluster) or len(windows_input_AGN) != len(windows_input_cluster):
+    if len(windows_Xamin) != len(info_class):
         raise ValueError("Les trois listes de fenêtres doivent avoir la même longueur.")
 
+    isCluster = info_class["isCluster"]
+
     result = []
-    for win_xamin, win_input_cluster, win_input_AGN in zip(windows_Xamin, windows_input_cluster, windows_input_AGN):
+    for win_xamin, srcClassFlag in zip(windows_Xamin, isCluster):
         win_xamin = np.array(win_xamin)
-        win_input_cluster = np.array(win_input_cluster)
-        win_input_AGN = np.array(win_input_AGN)
+        srcClassFlag = np.array(srcClassFlag)
         seq = []
         seq.extend(cls_token)
         seq.extend(win_xamin.flatten())
         seq.extend(sep_amas_token)
-        seq.extend(win_input_cluster.flatten())
-        seq.extend(sep_agn_token)
-        seq.extend(win_input_AGN.flatten())
+        seq.extend(srcClassFlag.flatten())
         seq.extend(sep_token)
         result.append(seq)
 
@@ -813,18 +654,49 @@ def combine_and_flatten_with_special_tokens(windows_Xamin, windows_input_cluster
 
 
 
-
-
-def convert_numpy_types(obj):
-    """Convertit les types NumPy en types natifs Python pour la sérialisation JSON"""
-    if isinstance(obj, (np.float32, np.float64)):
-        return float(obj)
-    elif isinstance(obj, (np.int32, np.int64)):
-        return int(obj)
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, dict):
-        return {key: convert_numpy_types(value) for key, value in obj.items()}
-    elif isinstance(obj, (list, tuple)):
-        return [convert_numpy_types(item) for item in obj]
-    return obj
+def process_and_save_chunks(directory, output_path, stats_Xamin, max_sources):
+    """
+    Traite les fichiers par chunks et sauvegarde dans un seul X.txt en streaming
+    
+    Args:
+        directory: Répertoire contenant les fichiers windows_*, clusters_*, agn_*
+        output_path: Chemin complet du fichier de sortie X.txt
+        stats_Xamin: Statistiques pour la discrétisation des windows
+        max_sources: Nombre max de sources
+    """
+    
+    # Création du répertoire de sortie si besoin
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    # Ouverture du fichier en mode write (efface si existe déjà)
+    with open(output_path, 'w') as f:
+        # Trouver tous les chunks disponibles
+        chunk_files = sorted([f for f in os.listdir(directory) if f.startswith('windows_')])
+        
+        for chunk_file in chunk_files:
+            chunk_num = chunk_file.split('_')[1].split('.')[0]
+            print(f"Traitement du chunk {chunk_num}...")
+            
+            # Chargement des fichiers
+            current_windows = Table.read(os.path.join(directory, f'windows_{chunk_num}.fits'))
+            current_info_class = Table.read(os.path.join(directory, f'class_{chunk_num}.fits'))
+            
+            # Application des transformations
+            
+            #print("\n=== Première ligne ===")
+            #for col in current_windows.colnames:
+            #    print(f"{col} : {current_windows[col][0]}")
+            
+            windows = discretise_et_complete(current_windows, current_windows, 
+                                          int(VOCAB_SIZE-NOMBRE_TOKENS_SPECIAUX), 
+                                          stats_Xamin, SELECTED_COLUMNS_Xamin, 
+                                          use_log_scale_Xamin, PAD_TOKEN, max_sources)
+            
+            # Combinaison et écriture directe dans le fichier
+            X = combine_and_flatten_with_special_tokens(windows, current_info_class)
+            np.savetxt(f, X, fmt='%d')
+            
+            # Nettoyage mémoire explicite
+            del current_windows, current_info_class, windows, X
+    
+    print(f"Tous les chunks ont été traités et sauvegardés dans {output_path}")

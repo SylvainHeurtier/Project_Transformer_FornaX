@@ -9,8 +9,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16           # 16 cœurs CPU
 #SBATCH --gres=gpu:1                 # 1 GPU A100
-#SBATCH --output=/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/logs/GenerateSequence_%j.out  # Chemin absolu
-#SBATCH --error=/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/logs/GenerateSequence_%j.err    # Chemin absolu
+#SBATCH --output=/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/logs/GenerateSequence_%j.out  # Chemin absolu
+#SBATCH --error=/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/logs/GenerateSequence_%j.err    # Chemin absolu
 
 module purge
 
@@ -25,7 +25,7 @@ module load tensorflow-gpu/py3/2.8.0  # TensorFlow avec support GPU
 
 
 # Déplacement dans le dossier source
-cd /lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/src
+cd /lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/src
 pwd
 
 export CUDA_VISIBLE_DEVICES=0

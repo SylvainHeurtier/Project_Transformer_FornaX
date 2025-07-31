@@ -35,7 +35,8 @@ EXT_LIKE_SPURIOUS = 15
 NOMBRE_PHOTONS_MIN = 100
 
 # Nombre de rotations de la fenetre
-Nbre2Rotations = 3200
+TOTAL_ROTATIONS = 40000
+CHUNK_SIZE = 400
 
 # Dictionnaire pour la tokenisation
 
@@ -74,7 +75,8 @@ def print_parameters():
         ('EXT_C1_C2_new', EXT_C1_C2_new, 'arcsec', ''),
         ('window_size', WINDOW_SIZE_ARCMIN, 'arcmin', '.1f'),
         ('MAX_Xamin_PAR_FENESTRON', MAX_Xamin_PAR_FENESTRON, '', ''),
-        ('Nbre2Rotations', Nbre2Rotations, '', ''),
+        ('TOTAL_ROTATIONS', TOTAL_ROTATIONS, '', ''),
+        ('CHUNK_SIZE', CHUNK_SIZE, '', ''),
         ('PNT_DET_ML_SPURIOUS', PNT_DET_ML_SPURIOUS, '', ''),
         ('EXT_LIKE_SPURIOUS', EXT_LIKE_SPURIOUS, '', ''),
         ('NOMBRE_PHOTONS_MIN', NOMBRE_PHOTONS_MIN, 'photons', ''),

@@ -220,7 +220,7 @@ print(f"\n Sauvegarde des fichiers \n")
 # Sauvegarde fichiers d'entree AMAS
 
 output_filename = f"AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits"
-output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
+output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
 
 data_AMAS.write(output_path, format='fits', overwrite=True)
 
@@ -236,13 +236,13 @@ print(f"Dimensions : {len(data_AMAS)} lignes x {len(data_AMAS.columns)} colonnes
 # Sauvegarde fichiers des ID_Xamin des AMAS
 
 output_filename = f"list_ID_Xamin_AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits"
-output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
+output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
 np.savetxt(output_path, list_ID_Xamin_AMAS, fmt='%d')
 
 # Sauvegarde fichiers d'entree AGN
 
 output_filename = f"AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits"
-output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
+output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
 
 data_AGN.write(output_path, format='fits', overwrite=True)
 
@@ -258,7 +258,7 @@ print(f"Dimensions : {len(data_AGN)} lignes x {len(data_AGN.columns)} colonnes")
 # Sauvegarde fichiers des ID_Xamin des AGN
 
 output_filename = f"list_ID_Xamin_AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits"
-output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
+output_path = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/{output_filename}')
 np.savetxt(output_path, list_ID_Xamin_AGN, fmt='%d')
 
 

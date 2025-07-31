@@ -12,14 +12,13 @@ from astropy.table import Table, vstack
 from astropy.table import join
 from collections import Counter
 import Fct_tokenisation
-from Fct_tokenisation import CreateListID_Xamin, Batisseuse2Fenetres, GardeFenestronsSousPeuples, CompteSourcesParFenetres, random_rotations_and_mirror, compute_global_stats, discretise_et_complete, combine_and_flatten_with_special_tokens, convert_numpy_types
+from Fct_tokenisation import CreateListID_Xamin, Batisseuse2Fenetres, GardeFenestronsSousPeuples, CompteSourcesParFenetres, compute_global_stats, discretise_et_complete, convert_numpy_types, process_rotations_in_chunks, process_and_save_chunks
 
-from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, Nbre2Rotations
+from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, TOTAL_ROTATIONS, CHUNK_SIZE
 from Constantes import path_list_ID_Xamin_AMAS, path_list_ID_Xamin_AGN
 from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN
-from Constantes import use_log_scale_Xamin, use_log_scale_input_clusters, use_log_scale_input_AGN
 from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
-from Constantes import WINDOW_SIZE_ARCMIN, NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, name_dir
+from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, name_dir
 from Constantes import catalog_path_aftXamin, new_catalog_path_AGN, new_catalog_path_AMAS
 
 
@@ -188,98 +187,12 @@ global_stats_input_AGN      = compute_global_stats(vstack([info_AGN_train, info_
 print(" ")
 print(f"=== Rotation des fenetres === \n")
 
-
-def process_rotations_in_chunks(list_windows, info_clusters, info_AGN, 
-                              total_rotations, chunk_size, output_dir,
-                              stats_Xamin, stats_input_clusters, stats_input_AGN):
-    """
-    Applique les rotations par chunks et sauvegarde les résultats sans retourner de valeur
-    
-    Paramètres :
-        list_windows: Table Astropy des sources
-        info_clusters: Table Astropy des clusters
-        info_AGN: Table Astropy des AGN
-        total_rotations: Nombre total de rotations à appliquer
-        chunk_size: Nombre de rotations par chunk
-        output_dir: Répertoire de sortie pour les fichiers FITS
-    """
-    # Création du répertoire de sortie
-    os.makedirs(output_dir, exist_ok=True)  # Recrée le répertoire vide
-    for filename in os.listdir(output_dir):
-        if filename.endswith('.fits'): 
-            os.remove(os.path.join(output_dir, filename))
-
-    # Initialisation des données courantes
-    current_windows = list_windows.copy()
-    current_clusters = info_clusters.copy()
-    current_agn = info_AGN.copy()
-    file_counter = 1 # Compteur de fichiers
-
-    save_current_state(
-            current_windows,
-            current_clusters,
-            current_agn,
-            output_dir,
-            file_counter
-        )
-    file_counter += 1
-
-    # Boucle principale
-    for start_rot in range(0, total_rotations, chunk_size):
-        actual_chunk_size = min(chunk_size, total_rotations - start_rot)
-        print(f"Processing rotations {start_rot+1}-{start_rot+actual_chunk_size}/{total_rotations}")
-        
-        # Application des rotations
-        rotated_windows, rotated_clusters, rotated_agn = \
-            random_rotations_and_mirror(
-                list_windows,  # On part toujours des originaux
-                info_clusters,
-                info_AGN,
-                NumberOfRotations=actual_chunk_size
-            )
-                
-        # Mise a jour des statistiques
-        stats_Xamin          = compute_global_stats(rotated_windows, SELECTED_COLUMNS_Xamin, stats_Xamin)
-        stats_input_clusters = compute_global_stats(rotated_clusters, SELECTED_COLUMNS_input_clusters, stats_input_clusters)
-        stats_input_AGN      = compute_global_stats(rotated_agn, SELECTED_COLUMNS_input_AGN, stats_input_AGN) 
-
-        # Sauvegarde des résultats
-        save_current_state(
-            rotated_windows,
-            rotated_clusters,
-            rotated_agn,
-            output_dir,
-            file_counter
-        )
-        
-        file_counter += 1
-    
-    print(f"Traitement terminé. Résultats sauvegardés dans {output_dir}")
-    return stats_Xamin, stats_input_clusters, stats_input_AGN
-
-
-
-
-def save_current_state(windows, clusters, agn, output_dir, chunk_num):
-    """Sauvegarde l'état courant dans des fichiers FITS"""
-    windows.write(os.path.join(output_dir, f"windows_{chunk_num:04d}.fits"), overwrite=True)
-    
-    if len(clusters) > 0:
-        clusters.write(os.path.join(output_dir, f"clusters_{chunk_num:04d}.fits"), overwrite=True)
-    
-    if len(agn) > 0:
-        agn.write(os.path.join(output_dir, f"agn_{chunk_num:04d}.fits"), overwrite=True)
-
-
-
-
-
 global_stats_Xamin, global_stats_input_clusters, global_stats_input_AGN = \
     process_rotations_in_chunks(list_windows_test, 
                             info_clusters_test, 
                             info_AGN_test, 
-                            total_rotations=30000, 
-                            chunk_size=300, 
+                            total_rotations=TOTAL_ROTATIONS,
+                            chunk_size=CHUNK_SIZE, 
                             output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_test",
                             stats_Xamin = global_stats_Xamin, 
                             stats_input_clusters = global_stats_input_clusters, 
@@ -290,8 +203,8 @@ global_stats_Xamin, global_stats_input_clusters, global_stats_input_AGN = \
     process_rotations_in_chunks(list_windows_train, 
                             info_clusters_train, 
                             info_AGN_train, 
-                            total_rotations=30000, 
-                            chunk_size=300, 
+                            total_rotations=TOTAL_ROTATIONS, 
+                            chunk_size=CHUNK_SIZE, 
                             output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_train",
                             stats_Xamin = global_stats_Xamin, 
                             stats_input_clusters = global_stats_input_clusters, 
@@ -304,70 +217,6 @@ print(" ")
 print(f"=== Discretisation des données === \n")
 
 
-def process_and_save_chunks(directory, output_path,
-                          stats_Xamin, stats_input_clusters, stats_input_AGN,
-                          max_sources, max_clusters, max_agn):
-    """
-    Traite les fichiers par chunks et sauvegarde dans un seul X.txt en streaming
-    
-    Args:
-        directory: Répertoire contenant les fichiers windows_*, clusters_*, agn_*
-        output_path: Chemin complet du fichier de sortie X.txt
-        stats_Xamin: Statistiques pour la discrétisation des windows
-        stats_input_clusters: Statistiques pour les clusters
-        stats_input_AGN: Statistiques pour les AGN
-        max_sources: Nombre max de sources
-        max_clusters: Nombre max de clusters
-        max_agn: Nombre max d'AGN
-    """
-    
-    # Création du répertoire de sortie si besoin
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    # Ouverture du fichier en mode write (efface si existe déjà)
-    with open(output_path, 'w') as f:
-        # Trouver tous les chunks disponibles
-        chunk_files = sorted([f for f in os.listdir(directory) if f.startswith('windows_')])
-        
-        for chunk_file in chunk_files:
-            chunk_num = chunk_file.split('_')[1].split('.')[0]
-            print(f"Traitement du chunk {chunk_num}...")
-            
-            # Chargement des fichiers
-            current_windows = Table.read(os.path.join(directory, f'windows_{chunk_num}.fits'))
-            current_clusters = Table.read(os.path.join(directory, f'clusters_{chunk_num}.fits')) if os.path.exists(os.path.join(directory, f'clusters_{chunk_num}.fits')) else Table()
-            current_agn = Table.read(os.path.join(directory, f'agn_{chunk_num}.fits')) if os.path.exists(os.path.join(directory, f'agn_{chunk_num}.fits')) else Table()
-            
-            # Application des transformations
-            
-            #print("\n=== Première ligne ===")
-            #for col in current_windows.colnames:
-            #    print(f"{col} : {current_windows[col][0]}")
-            
-            windows = discretise_et_complete(current_windows, current_windows, 
-                                          int(VOCAB_SIZE-NOMBRE_TOKENS_SPECIAUX), 
-                                          stats_Xamin, SELECTED_COLUMNS_Xamin, 
-                                          use_log_scale_Xamin, PAD_TOKEN, max_sources)
-            
-            ClustersInWindows = discretise_et_complete(current_windows, current_clusters, 
-                                                    int(VOCAB_SIZE-NOMBRE_TOKENS_SPECIAUX),
-                                                    stats_input_clusters, SELECTED_COLUMNS_input_clusters,
-                                                    use_log_scale_input_clusters, PAD_TOKEN, max_clusters)
-            
-            AGNInWindows = discretise_et_complete(current_windows, current_agn,
-                                                int(VOCAB_SIZE-NOMBRE_TOKENS_SPECIAUX),
-                                                stats_input_AGN, SELECTED_COLUMNS_input_AGN,
-                                                use_log_scale_input_AGN, PAD_TOKEN, max_agn)
-            
-            # Combinaison et écriture directe dans le fichier
-            X = combine_and_flatten_with_special_tokens(windows, ClustersInWindows, AGNInWindows)
-            np.savetxt(f, X, fmt='%d')
-            
-            # Nettoyage mémoire explicite
-            del current_windows, current_clusters, current_agn, windows, ClustersInWindows, AGNInWindows, X
-    
-    print(f"Tous les chunks ont été traités et sauvegardés dans {output_path}")
-        
 
 process_and_save_chunks(
     directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_test",
@@ -380,8 +229,6 @@ process_and_save_chunks(
     max_agn      = MAX_AGN
 )
 
-windows_train = discretise_et_complete(list_windows_train, list_windows_train, int(VOCAB_SIZE-NOMBRE_TOKENS_SPECIAUX), global_stats_Xamin, SELECTED_COLUMNS_Xamin, use_log_scale_Xamin, PAD_TOKEN, MAX_SOURCES)
-print("\n      **** TEST  DE DISCRETISATION DIRECTE : OK ***\n")
 
 process_and_save_chunks(
     directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_train",

@@ -31,15 +31,15 @@ print("#" + " " * (largeur-2) + "#")
 print("#" * largeur)
 
 # Chargement des données
-X_train = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.txt', dtype=np.int32)
-X_test = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.txt', dtype=np.int32)
+X_train = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.txt', dtype=np.int32)
+X_test = np.loadtxt(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.txt', dtype=np.int32)
 
 print(f"\nDim de X_train: {X_train.shape}") # Devrait être (n_windows,  len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + len(SELECTED_COLUMNS_input_clusters) * MAX_CLUSTERS * 2 + len(SELECTED_COLUMNS_input_AGN) * MAX_AGN * 2 + 4)
 print(f"Dim de X_test: {X_test.shape}") # Devrait être (n_windows,  len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + len(SELECTED_COLUMNS_input_clusters) * MAX_CLUSTERS * 2 + len(SELECTED_COLUMNS_input_AGN) * MAX_AGN * 2 + 4)
 
 
 #////////// Load Configuration /////////
-with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/constantes_du_modele.json", 'r') as f:
+with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/constantes_du_modele.json", 'r') as f:
     config = json.load(f)
 
 MAX_SOURCES  = config["MAX_SOURCES"]
@@ -125,7 +125,7 @@ model = AutoregressiveTransformerModel(
 dummy_input = tf.ones((1, X_train.shape[1]), dtype=tf.int32)
 _ = model(dummy_input)  # Cette ligne crée les variables
 # Chargement SIMPLE des poids .h5
-model.load_weights(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/model_weights.h5')
+model.load_weights(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/model_weights.h5')
 
 # Paramètres de génération
 #max_length = len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + len(SELECTED_COLUMNS_input_clusters) * MAX_CLUSTERS * 2 + len(SELECTED_COLUMNS_input_AGN) * MAX_AGN * 2 + 4
@@ -172,7 +172,7 @@ def Pythie_optimized(X, min_idx_gen, max_idx_gen, save_list_of_generated_sequenc
         list_of_generated_sequences.extend(generated)
 
     # Sauvegarde des résultats
-    save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/"
+    save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/"
     suffix = "full" if max_idx_gen == len(X) - 1 else f"{min_idx_gen}-{max_idx_gen}"
     with open(f"{save_path}generated_seq_by_imperator_{name}_{suffix}.pkl", 'wb') as f:
         pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)

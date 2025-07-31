@@ -35,7 +35,8 @@ EXT_LIKE_SPURIOUS = 15
 NOMBRE_PHOTONS_MIN = 100
 
 # Nombre de rotations de la fenetre
-Nbre2Rotations = 3200
+TOTAL_ROTATIONS = 3000
+CHUNK_SIZE = 300
 
 # Dictionnaire pour la tokenisation
 
@@ -74,7 +75,8 @@ def print_parameters():
         ('EXT_C1_C2_new', EXT_C1_C2_new, 'arcsec', ''),
         ('window_size', WINDOW_SIZE_ARCMIN, 'arcmin', '.1f'),
         ('MAX_Xamin_PAR_FENESTRON', MAX_Xamin_PAR_FENESTRON, '', ''),
-        ('Nbre2Rotations', Nbre2Rotations, '', ''),
+        ('TOTAL_ROTATIONS', TOTAL_ROTATIONS, '', ''),
+        ('CHUNK_SIZE', CHUNK_SIZE, '', ''),
         ('PNT_DET_ML_SPURIOUS', PNT_DET_ML_SPURIOUS, '', ''),
         ('EXT_LIKE_SPURIOUS', EXT_LIKE_SPURIOUS, '', ''),
         ('NOMBRE_PHOTONS_MIN', NOMBRE_PHOTONS_MIN, 'photons', ''),
@@ -132,11 +134,11 @@ if(Simulation2):
     catalog_path_aftXamin = os.path.expanduser('/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/data/Simulation2/fsII_25_lensed_AGN1/Xamin_onlyMOSPN/merged_catalog_cleaned.fits')
     catalog_path_AGN      = os.path.expanduser('/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/data/Simulation2/fsII_25_lensed_AGN1/FS2_MAMBO_AGN_1.fits')
 
-path_list_ID_Xamin_AMAS = f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/list_ID_Xamin_AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits'
-path_list_ID_Xamin_AGN  = f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/list_ID_Xamin_AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits'
+path_list_ID_Xamin_AMAS = f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/list_ID_Xamin_AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits'
+path_list_ID_Xamin_AGN  = f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/list_ID_Xamin_AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits'
 
-new_catalog_path_AMAS  = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits')
-new_catalog_path_AGN  = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Transformer_Window_Center_Classifier/results/{name_dir}/AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits')
+new_catalog_path_AMAS  = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/AMAS_matches_r{SEARCH_RADIUS_CLUSTER*3600:.0f}arcsec_flux{LIM_FLUX_CLUSTER}_40ks.fits')
+new_catalog_path_AGN  = os.path.expanduser(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/AGN_matches_r{SEARCH_RADIUS_AGN*3600:.0f}arcsec_flux{LIM_FLUX_AGN}_40ks.fits')
 
 #/////////////////////////////////////////////////////////////////////////
 
