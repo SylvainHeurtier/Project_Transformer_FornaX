@@ -172,10 +172,15 @@ def Pythie_optimized(X, min_idx_gen, max_idx_gen, save_list_of_generated_sequenc
         list_of_generated_sequences.extend(generated)
 
     # Sauvegarde des résultats
-    save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/"
+    save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/"
     suffix = "full" if max_idx_gen == len(X) - 1 else f"{min_idx_gen}-{max_idx_gen}"
-    with open(f"{save_path}generated_seq_by_imperator_{name}_{suffix}.pkl", 'wb') as f:
-        pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open(f"{save_path}sequence_divinatio_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    list_of_sequences = X[:len(list_of_generated_sequences)]
+    with open(f"{save_path}sequence_veritas_{name}_{suffix}.pkl", 'wb') as f:
+        pickle.dump(list_of_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Exécution
-Pythie_optimized(X_test, 0, 500000, True, "test", batch_size=128)
+Pythie_optimized(X_test, 0, 50000, True, "test", batch_size=128)

@@ -10,8 +10,8 @@
 
 LIM_FLUX_CLUSTER = 1e-15
 LIM_FLUX_AGN = 1e-15
-SEARCH_RADIUS_CLUSTER = 20.0 / 3600  # conversion arcsec en degrés
-SEARCH_RADIUS_AGN = 10.0 / 3600  # conversion arcsec en degrés
+SEARCH_RADIUS_CLUSTER = 10.0 / 3600  # conversion arcsec en degrés
+SEARCH_RADIUS_AGN = 5.0 / 3600  # conversion arcsec en degrés
 
 # Definitions des classes C1 et C2
 EXT_LIKE_C1 = 33
@@ -25,29 +25,30 @@ EXT_LIKE_C2_new = 35
 
 # Taille de la fenetre carree
 WINDOW_SIZE_ARCMIN  = 2 # arcmin
-MAX_Xamin_PAR_FENESTRON = 2
+MAX_Xamin_PAR_FENESTRON = 5
 
 # Fausses sources
 PNT_DET_ML_SPURIOUS = 20
 EXT_LIKE_SPURIOUS = 15
 
 # Limite inferieur sur le nombre de photons des sources Xamin selectionnees
-NOMBRE_PHOTONS_MIN = 100
+NOMBRE_PHOTONS_MIN = 40
 
 # Nombre de rotations de la fenetre
-TOTAL_ROTATIONS = 30000
-CHUNK_SIZE = 300
+TOTAL_ROTATIONS = 400
+CHUNK_SIZE = 150
 
 # Dictionnaire pour la tokenisation
 
-VOCAB_SIZE = 1029 # Tokens valides: 0-1023 = 1024 tokens + 3 tokens speciaux
-PAD_TOKEN  = 1024  # Padding
-SEP_TOKEN  = 1025  # Marque la fin de la sequence
-CLS_TOKEN  = 1026  # Marque le debut de la sequence
-SEP_AMAS   = 1027 # Marque le debut du catalogue AMAS
-SEP_AGN    = 1028 # Marque le debut du catalogue AGN
+VOCAB_SIZE   = 1030 # Tokens valides: 0-1023 = 1024 tokens + 3 tokens speciaux
+PAD_TOKEN    = 1024  # Padding
+SEP_TOKEN    = 1025  # Marque la fin de la sequence
+CLS_TOKEN    = 1026  # Marque le debut de la sequence
+SEP_AMAS     = 1027
+ISCLUSTER    = 1028
+ISNOTCLUSTER = 1029
 
-NOMBRE_TOKENS_SPECIAUX = 5
+NOMBRE_TOKENS_SPECIAUX = 6
 
 
 # Dimensions du Transformer
@@ -84,7 +85,8 @@ def print_parameters():
         ('PAD_TOKEN', PAD_TOKEN, '', ''),
         ('SEP_TOKEN', SEP_TOKEN, '', ''),
         ('SEP_AMAS', SEP_AMAS, '', ''),
-        ('SEP_AGN', SEP_AGN, '', ''),
+        ('ISCLUSTER', ISCLUSTER, '', ''),
+        ('ISNOTCLUSTER', ISNOTCLUSTER, '', ''),
         ('NOMBRE_TOKENS_SPECIAUX', NOMBRE_TOKENS_SPECIAUX, '', ''),
         ('BATCH_SIZE', BATCH_SIZE, '', ''),
         ('D_MODEL', D_MODEL, '', ''),
@@ -154,18 +156,9 @@ print("#" * largeur)
 #SELECTED_COLUMNS_Xamin = ['EXT_LIKE', 'EXT', 'EXT_RA', 'EXT_DEC' ,'PNT_DET_ML', 'PNT_RA', 'PNT_DEC', 'PNT_RATE_MOS', 'PNT_RATE_PN']
 SELECTED_COLUMNS_Xamin = ['EXT_LIKE', 'EXT', 'EXT_RA', 'EXT_DEC' ,'PNT_DET_ML']
 
-SELECTED_COLUMNS_input_clusters = ['R.A.', 'Dec']
-SELECTED_COLUMNS_input_AGN = ['ra_mag_gal', 'dec_mag_gal']
-
 print(f'\nNombre de colonnes SELECTED_COLUMNS_Xamin: {len(SELECTED_COLUMNS_Xamin)}')
-print(f'Nombre de colonnes SELECTED_COLUMNS_input_clusters: {len(SELECTED_COLUMNS_input_clusters)}')
-print(f'Nombre de colonnes SELECTED_COLUMNS_input_AGN: {len(SELECTED_COLUMNS_input_AGN)}')
 
 #use_log_scale_Xamin = [True, True, False, False, True, False, False, True, True]
 use_log_scale_Xamin = [True, True, False, False, True]
-use_log_scale_input_clusters = [False, False]
-use_log_scale_input_AGN = [False, False]
 
 print(f'\nNombre de colonnes use_log_scale_Xamin: {len(use_log_scale_Xamin)}')
-print(f'Nombre de colonnes use_log_scale_input_clusters: {len(use_log_scale_input_clusters)}')
-print(f'Nombre de colonnes use_log_scale_input_AGN: {len(use_log_scale_input_AGN)}')

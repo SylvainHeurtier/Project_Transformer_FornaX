@@ -28,11 +28,9 @@ from collections import Counter
 
 from Constantes import LIM_FLUX_CLUSTER, LIM_FLUX_AGN
 from Constantes import SEARCH_RADIUS_CLUSTER, SEARCH_RADIUS_AGN
-from Constantes import WINDOW_SIZE_ARCMIN, NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON
-from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
+from Constantes import NOMBRE_PHOTONS_MIN
 from Constantes import EXT_LIKE_C1, EXT_LIKE_C2, EXT_C1_C2, PNT_DET_ML_SPURIOUS, EXT_LIKE_SPURIOUS
 from Constantes import catalog_path_aftXamin, catalog_path_AGN, catalog_path_AMAS
-from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN
 from Constantes import Simulation1, Simulation2, name_dir
 
 from Constantes import print_parameters

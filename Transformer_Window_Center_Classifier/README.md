@@ -50,7 +50,7 @@ graph LR
 ## **Project Structure**
 
 ```text
-TransformerProject/
+Project_Transformer_FornaX/Transformer_Window_Center_Classifier/
 
 ├── src/
 │   ├── Constantes.py            # Configuration parameters and constants

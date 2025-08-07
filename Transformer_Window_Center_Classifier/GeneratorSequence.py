@@ -9,10 +9,10 @@ import pickle
 
 
 # Chargement des constantes
-from Constantes import SELECTED_COLUMNS_Xamin, SELECTED_COLUMNS_input_clusters, SELECTED_COLUMNS_input_AGN
-from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
+from Constantes import SELECTED_COLUMNS_Xamin
+from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, NOMBRE_TOKENS_SPECIAUX
 from Constantes import BATCH_SIZE, D_MODEL, NUM_HEADS, NUM_LAYERS, name_dir
-from Constantes import name_dir
+from Constantes import name_dir, ISCLUSTER, ISNOTCLUSTER
 
 
 
@@ -43,8 +43,6 @@ with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/
     config = json.load(f)
 
 MAX_SOURCES  = config["MAX_SOURCES"]
-MAX_CLUSTERS = config["MAX_CLUSTERS"]
-MAX_AGN = config["MAX_AGN"]
 
 print("┌───────────────────────────────┐")
 print("│  MODEL CONFIGURATION          │")
@@ -133,49 +131,202 @@ max_length = len(X_test[0])
 
 #///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-# Fonction de génération (version TensorFlow pure)
-def generate_sequences_batch(model, initial_tokens_batch, max_length):
-    batch_size = initial_tokens_batch.shape[0]
-    current_seq_len = initial_tokens_batch.shape[1]
-    
-    output = np.full((batch_size, max_length), PAD_TOKEN, dtype=np.int32)
-    output[:, :current_seq_len] = initial_tokens_batch
-    
-    for i in range(current_seq_len, max_length):
-        logits = model(output[:, :i])
-        next_tokens = tf.argmax(logits[:, -1, :], axis=-1).numpy()
-        output[:, i] = next_tokens
-        
-        # Arrêt si tous les séquences ont généré SEP_TOKEN
-        if np.all(next_tokens == SEP_TOKEN):
+CLASS_TOKENS = [ISCLUSTER, ISNOTCLUSTER]
+CLASS_POSITION = len(SELECTED_COLUMNS_Xamin)*MAX_SOURCES + 2
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+# Fonction de génération
+
+def generate_sequence(initial_tokens, max_length, class_position, temperature=1.0):
+    """
+    Génère une séquence et retourne les probabilités de classe uniquement pour le token à class_position
+    Version TensorFlow (remplace JAX)
+    """
+    class_probs = None  # Initialisation à None si la position n'est pas atteinte
+
+    if isinstance(initial_tokens, (list, np.ndarray)):
+        initial_tokens = tf.convert_to_tensor(initial_tokens, dtype=tf.int32)
+
+    if len(initial_tokens.shape) == 1:
+        current_tokens = tf.expand_dims(initial_tokens, axis=0)
+    else:
+        current_tokens = initial_tokens
+
+    for i in range(current_tokens.shape[1], max_length):
+        try:
+            logits = model(current_tokens)
+
+            if len(logits.shape) == 2:
+                next_token_logits = logits[0, :]
+            elif len(logits.shape) == 3:
+                next_token_logits = logits[0, -1, :]
+            else:
+                raise ValueError(f"Forme inattendue des logits: {logits.shape}")
+
+            current_position = current_tokens.shape[1]  # Position du token qu'on va ajouter
+
+            if current_position == class_position:
+                all_probs = tf.nn.softmax(next_token_logits / temperature)  # Softmax global
+                class_probs_tensor = tf.gather(all_probs, CLASS_TOKENS)     # Extraction
+                class_probs = class_probs_tensor.numpy() / tf.reduce_sum(class_probs_tensor).numpy()  # Renormalisation
+
+                # Sélection du token le plus probable parmi CLASS_TOKENS
+                chosen_class_idx = tf.argmax(class_probs_tensor).numpy()
+                chosen_class_token = CLASS_TOKENS[chosen_class_idx]
+                next_token = chosen_class_token
+            else:
+                # Échantillonnage du prochain token pour les autres positions
+                next_token = tf.random.categorical(
+                    tf.expand_dims(next_token_logits / temperature, 0),
+                    num_samples=1
+                )[0, 0].numpy()
+
+            # Mise à jour des tokens
+            current_tokens = tf.concat([
+                current_tokens,
+                tf.constant([[next_token]], dtype=tf.int32)
+            ], axis=1)
+            '''
+            if next_token == SEP_TOKEN:
+                break
+            '''
+
+        except Exception as e:
+            print(f"Erreur à l'étape {i}: {str(e)}")
+            print(f"Current tokens shape: {current_tokens.shape}")
+            print(f"Logits shape: {logits.shape if 'logits' in locals() else 'N/A'}")
             break
+
+    return current_tokens[0].numpy(), class_probs
+
+
+
+def generate_sequence_batch(initial_tokens_batch, max_length, class_position, temperature=1.0):
+    """Version corrigée avec gestion stricte des types"""
+    # Conversion initiale en int32
+    if isinstance(initial_tokens_batch, (list, np.ndarray)):
+        current_tokens = tf.convert_to_tensor(initial_tokens_batch, dtype=tf.int32)
+    else:
+        current_tokens = tf.cast(initial_tokens_batch, tf.int32)
     
-    return output
+    batch_size = current_tokens.shape[0]
+    class_probs_list = [None] * batch_size
 
-# Fonction principale adaptée
-def Pythie_optimized(X, min_idx_gen, max_idx_gen, save_list_of_generated_sequences, name, batch_size=128):
-    if not save_list_of_generated_sequences:
-        return
+    for i in range(current_tokens.shape[1], max_length):
+        try:
+            logits = model(current_tokens)
+            next_token_logits = logits[:, -1, :]  # [batch_size, vocab_size]
+            
+            all_probs = tf.nn.softmax(next_token_logits / temperature, axis=-1)
+            current_position = current_tokens.shape[1]
 
-    index_end_of_Xamin_part = MAX_SOURCES * len(SELECTED_COLUMNS_Xamin) + 1
-    max_idx_gen = min(max_idx_gen, len(X) - 1)
-    
-    num_batches = int(np.ceil((max_idx_gen - min_idx_gen + 1) / batch_size))
-    list_of_generated_sequences = []
+            if current_position == class_position:
+                class_probs_tensor = tf.gather(all_probs, CLASS_TOKENS, axis=1)
+                class_probs_list = (class_probs_tensor / tf.reduce_sum(class_probs_tensor, axis=1, keepdims=True)).numpy()
+                
+                chosen_class_idxs = tf.argmax(class_probs_tensor, axis=1).numpy()
+                next_tokens = tf.constant([CLASS_TOKENS[idx] for idx in chosen_class_idxs], dtype=tf.int32)  # <-- int32 explicite
+            else:
+                next_tokens = tf.random.categorical(
+                    next_token_logits / temperature, 
+                    num_samples=1
+                )[:, 0]
+                next_tokens = tf.cast(next_tokens, tf.int32)  # <-- Conversion ajoutée
 
-    for batch_num in range(num_batches):
-        start_idx = min_idx_gen + batch_num * batch_size
-        end_idx = min(start_idx + batch_size, max_idx_gen + 1)
+            # Conversion de type explicite avant concat
+            next_tokens = tf.cast(next_tokens, tf.int32)
+            current_tokens = tf.concat([
+                current_tokens,
+                tf.expand_dims(next_tokens, axis=1)
+            ], axis=1)
+
+        except Exception as e:
+            print(f"Erreur à l'étape {i}: {str(e)}")
+            print(f"Type current_tokens: {current_tokens.dtype}, Type next_tokens: {next_tokens.dtype}")
+            break
+
+    return current_tokens.numpy(), class_probs_list
+
+
+'''
+
+def Pythie(X, min_idx_gen, max_idx_gen, save_list_of_generated_sequences, name):
+    if save_list_of_generated_sequences:
+        list_of_generated_sequences = []
+        list_of_class_probs = []
+
+        index_end_of_Xamin_part = len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + 1 
+        print(f"index_end_of_Xamin_part = {index_end_of_Xamin_part}")
+        if max_idx_gen + 1 >= len(X):
+            max_idx_gen = len(X) - 1
+
+        for i in range(min_idx_gen, max_idx_gen + 1):
+            initial_tokens = X[i, :index_end_of_Xamin_part].astype(np.int32)
+            generated_sequence, class_probs = generate_sequence(initial_tokens, max_length=max_length, class_position=CLASS_POSITION)
+            list_of_generated_sequences.append(generated_sequence)
+            list_of_class_probs.append(class_probs)
+
+        # Sauvegarde des résultats
+        save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/"
+        suffix = "full" if max_idx_gen == len(X) - 1 else f"{min_idx_gen}-{max_idx_gen}"
+        with open(f"{save_path}sequence_divinatio_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(f"{save_path}proba_divinatio_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_class_probs, f, protocol=pickle.HIGHEST_PROTOCOL)
         
-        batch = X[start_idx:end_idx, :index_end_of_Xamin_part]
-        generated = generate_sequences_batch(model, batch, max_length)
-        list_of_generated_sequences.extend(generated)
+        list_of_sequences = X[:len(list_of_generated_sequences)]
+        with open(f"{save_path}sequence_veritas_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+'''
 
-    # Sauvegarde des résultats
-    save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/"
-    suffix = "full" if max_idx_gen == len(X) - 1 else f"{min_idx_gen}-{max_idx_gen}"
-    with open(f"{save_path}generated_seq_by_imperator_{name}_{suffix}.pkl", 'wb') as f:
-        pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+def Pythie(X, min_idx_gen, max_idx_gen, save_list_of_generated_sequences, name, batch_size=32):
+    if save_list_of_generated_sequences:
+        list_of_generated_sequences = []
+        list_of_class_probs = []
+
+        index_end_of_Xamin_part = len(SELECTED_COLUMNS_Xamin) * MAX_SOURCES + 1 
+
+        if max_idx_gen + 1 >= len(X):
+            max_idx_gen = len(X) - 1
+
+        # Nouveau : traitement par lots vectorisés
+        for batch_start in range(min_idx_gen, max_idx_gen + 1, batch_size):
+            batch_end = min(batch_start + batch_size, max_idx_gen + 1)
+            batch = X[batch_start:batch_end, :index_end_of_Xamin_part].astype(np.int32)
+            
+            # Appel vectorisé (le vrai changement est ici)
+            generated_batch, probs_batch = generate_sequence_batch(
+                initial_tokens_batch=batch,
+                max_length=max_length,
+                class_position=CLASS_POSITION,
+                temperature=1.0
+            )
+            
+            list_of_generated_sequences.extend(generated_batch)
+            list_of_class_probs.extend(probs_batch)
+
+            # Optionnel : afficher la progression
+            print(f"Traitement des séquences {batch_start}-{batch_end-1} terminé")
+
+        # Sauvegarde (identique à votre version originale)
+        save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/"
+        suffix = "full" if max_idx_gen == len(X) - 1 else f"{min_idx_gen}-{max_idx_gen}"
+        
+        with open(f"{save_path}sequence_divinatio_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_generated_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        with open(f"{save_path}proba_divinatio_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_class_probs, f, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        list_of_sequences = X[:len(list_of_generated_sequences)]
+        with open(f"{save_path}sequence_veritas_{name}_{suffix}.pkl", 'wb') as f:
+            pickle.dump(list_of_sequences, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Exécution
-Pythie_optimized(X_test, 0, 500000, True, "test", batch_size=128)
+Pythie(X_test, 0, 100000, True, "test")
+
+

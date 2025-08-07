@@ -20,7 +20,7 @@ from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON
 from Constantes import path_list_ID_Xamin_AMAS, path_list_ID_Xamin_AGN
 from Constantes import SELECTED_COLUMNS_Xamin, use_log_scale_Xamin
 from Constantes import TOTAL_ROTATIONS, CHUNK_SIZE
-from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
+from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, NOMBRE_TOKENS_SPECIAUX
 from Constantes import NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON, name_dir
 from Constantes import catalog_path_aftXamin, new_catalog_path_AGN, new_catalog_path_AMAS
 
@@ -263,7 +263,6 @@ constantes_du_modele = {
     "SEP_TOKEN": SEP_TOKEN,
     "CLS_TOKEN": CLS_TOKEN,
     "SEP_AMAS": SEP_AMAS,
-    "SEP_AGN": SEP_AGN,
     "NOMBRE_TOKENS_SPECIAUX": NOMBRE_TOKENS_SPECIAUX,
     "MAX_SOURCES": int(MAX_SOURCES)
 }

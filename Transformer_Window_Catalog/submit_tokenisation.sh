@@ -4,7 +4,7 @@
 #SBATCH -C a100          # Partition pour A100
 #SBATCH --account=wka@a100       # Votre compte valide
 #SBATCH --qos=qos_gpu_a100-t3
-#SBATCH --time=2:00:00
+#SBATCH --time=20:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16           # 16 cœurs CPU

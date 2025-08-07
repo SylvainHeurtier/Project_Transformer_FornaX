@@ -7,7 +7,7 @@ This project implements a Transformer-based neural network to analyze astronomic
 ## **Project Structure**
 
 ```text
-TransformerProject/
+Project_Transformer_FornaX/Transformer_Window_Catalog/
 
 ├── src/
 │   ├── `Constantes.py`            # Configuration parameters and constants

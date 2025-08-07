@@ -7,7 +7,8 @@ import pickle
 import numpy as np
 
 # Import constants from config file
-from Constantes import BATCH_SIZE, D_MODEL, NUM_HEADS, NUM_LAYERS, name_dir, CLS_TOKEN, VOCAB_SIZE, NOMBRE_TOKENS_SPECIAUX
+from Constantes import BATCH_SIZE, D_MODEL, NUM_HEADS, NUM_LAYERS, name_dir
+from Constantes import CLS_TOKEN, SEP_TOKEN, SEP_AMAS, ISCLUSTER, ISNOTCLUSTER, VOCAB_SIZE, NOMBRE_TOKENS_SPECIAUX
 
 #///////////////////////////////////////////////////////////////////////////////////////////////////////
 #                                            TRANSFORMER MODEL
@@ -28,8 +29,6 @@ with open(f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/
     config = json.load(f)
 
 MAX_SOURCES  = config["MAX_SOURCES"]
-MAX_CLUSTERS = config["MAX_CLUSTERS"]
-MAX_AGN = config["MAX_AGN"]
 
 print("┌───────────────────────────────┐")
 print("│  MODEL CONFIGURATION          │")
@@ -105,14 +104,34 @@ class AutoregressiveTransformerModel(keras.Model):
         return self.output_layer(x)
 
 #////////// Training Setup /////////
+
 def initialize_sequences(batch_size, seq_length):
     cls_tokens = tf.fill((batch_size, 1), CLS_TOKEN)
+    sep_tokens = tf.fill((batch_size, 1), SEP_TOKEN)
+    sep_amas   = tf.fill((batch_size, 1), SEP_AMAS)
+    
     random_tokens = tf.random.uniform(
-        (batch_size, seq_length - 1),
+        (batch_size, seq_length - 4),
         0, VOCAB_SIZE - NOMBRE_TOKENS_SPECIAUX,
         dtype=tf.int32
     )
-    return tf.concat([cls_tokens, random_tokens], axis=1)
+
+    class_tokens = tf.random.uniform(
+        shape=(batch_size, 1),
+        minval=0,
+        maxval=2,  # Génère 0 ou 1
+        dtype=tf.int32
+    )
+
+    class_tokens = tf.where(
+        class_tokens == 0,
+        ISCLUSTER,  # Valeur si 0
+        ISNOTCLUSTER  # Valeur si 1
+    )
+
+    return tf.concat([cls_tokens, random_tokens, sep_amas, class_tokens, sep_tokens], axis=1)
+
+
 
 # Initialize model
 seq_length = X_train.shape[1]
@@ -126,7 +145,21 @@ model = AutoregressiveTransformerModel(
 
 # Loss and optimizer
 loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-optimizer = keras.optimizers.Adam(learning_rate=1e-4, clipnorm=0.5)
+
+lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+    initial_learning_rate=1e-4,
+    decay_steps=30000 - 3000,
+    alpha=0.0
+)
+warmup_steps = 3000
+lr_fn = lambda step: tf.cond(
+    step < warmup_steps,
+    lambda: 3e-5 + (1e-4 - 3e-5) * tf.cast(step, tf.float32) / warmup_steps,
+    lambda: lr_schedule(step - warmup_steps)
+)
+optimizer = keras.optimizers.Adam(learning_rate=lr_fn, clipnorm=0.5)
+
+#optimizer = keras.optimizers.Adam(learning_rate=1e-4, clipnorm=0.5)
 
 # Metrics
 train_loss = keras.metrics.Mean(name="train_loss")
@@ -158,7 +191,7 @@ def val_step(x):
     val_loss(loss)
 
 # Early stopping
-patience = 50
+patience = 500
 best_val_loss = float('inf')
 wait = 0
 best_weights = None
@@ -202,6 +235,9 @@ if best_weights is not None:
     model.set_weights(best_weights)
 
 #////////// Save Results /////////
+
+save_dir = f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}'
+
 # Plotting (same as before)
 plt.figure(figsize=(8, 5))
 plt.plot(loss_history, label='Train Loss')
@@ -210,9 +246,19 @@ plt.xlabel('Steps (x100)')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plt.savefig(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/training_curves_tf.png')
+plt.savefig(f'{save_dir}/training_curves_tf.png')
 
 # Save model
-model.save_weights(f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/model_weights.h5')
+model.save_weights(f'{save_dir}/model_weights.h5')
 
-print("Training complete!")
+# Save loss history
+with open(f"{save_dir}/loss_history.pkl", "wb") as f:
+    pickle.dump(loss_history, f)
+
+with open(f"{save_dir}/val_loss_history.pkl", "wb") as f:
+    pickle.dump(val_loss_history, f)
+
+
+4
+
+print("\nTraining complete and all artifacts saved.")

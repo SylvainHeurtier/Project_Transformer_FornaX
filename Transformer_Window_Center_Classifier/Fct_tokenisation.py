@@ -26,10 +26,8 @@ import astropy.units as u
 from astropy.table import join
 from collections import Counter
 
-from Constantes import LIM_FLUX_CLUSTER, LIM_FLUX_AGN
-from Constantes import SEARCH_RADIUS_CLUSTER, SEARCH_RADIUS_AGN
-from Constantes import WINDOW_SIZE_ARCMIN, NOMBRE_PHOTONS_MIN, MAX_Xamin_PAR_FENESTRON
-from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, CLS_TOKEN, SEP_AMAS, SEP_AGN, NOMBRE_TOKENS_SPECIAUX
+from Constantes import WINDOW_SIZE_ARCMIN
+from Constantes import VOCAB_SIZE, PAD_TOKEN, SEP_TOKEN, SEP_AMAS, CLS_TOKEN, ISNOTCLUSTER, ISCLUSTER, NOMBRE_TOKENS_SPECIAUX
 from Constantes import SELECTED_COLUMNS_Xamin, use_log_scale_Xamin, name_dir
 from Constantes import print_parameters
 
@@ -154,9 +152,9 @@ def Batisseuse2Fenetres(data_Xamin, list_ID_Xamin, list_ID_Xamin_clusters,
 
         # CLUSTERS PART
         if id in list_ID_Xamin_clusters:
-            info_class.add_row([window_num, 1])  # Ajoute une ligne (window, isCluster)
+            info_class.add_row([window_num, ISCLUSTER])  # Ajoute une ligne (window, isCluster)
         else:
-            info_class.add_row([window_num, 0])
+            info_class.add_row([window_num, ISNOTCLUSTER])
 
     # Ajouter toutes les lignes sélectionnées à la table de sortie
     list_windows = vstack(selected_src)
@@ -266,6 +264,7 @@ def random_rotations_and_mirror(list_windows, info_class, NumberOfRotations):
     """
     Applique des rotations aléatoires et des symétries miroir aux coordonnées RA/Dec
     avec optimisation CPU utilisant NumPy et Numba.
+    N rotations + N miroirs RA + N miroirs Dec + 1 miroir → total 3N+1
     
     Paramètres :
         list_windows : Table contenant les sources
@@ -287,20 +286,17 @@ def random_rotations_and_mirror(list_windows, info_class, NumberOfRotations):
         if ra_col in list_windows.colnames and dec_col in list_windows.colnames:
             coord_cols.append((ra_col, dec_col))
     
-    unique_windows = np.unique(list_windows['window'])
+    # Identifier les fenêtres avec > 1 source
+    window_counts = np.unique(list_windows['window'], return_counts=True)
+    windows_with_multiple_sources = window_counts[0][window_counts[1] > 1]
+
+    # Identifiant de la "derniere" fenetre
     max_window_num = max(list_windows['window']) if len(list_windows) > 0 else 0
     
-
     # //////////// Préparer les résultats ////////////
 
-    inclure_originale = False
-
-    if(inclure_originale): # (inclure la version originale)
-        augmented_windows = [list_windows.copy()]
-        info_class_augm = [info_class.copy()]
-    else: 
-        augmented_windows = []
-        info_class_augm = []
+    augmented_windows = []
+    info_class_augm = []
 
     # Fonctions optimisées avec Numba
     @numba.njit(fastmath=True)
@@ -313,24 +309,21 @@ def random_rotations_and_mirror(list_windows, info_class, NumberOfRotations):
         y_rot = ra_rad * sin_t + dec_rad * cos_t
         return np.rad2deg(x_rot), np.rad2deg(y_rot)
     
-    @numba.njit(fastmath=True)
-    def apply_mirror(ra):
-        return -ra
-    
     # Générer tous les angles de rotation à l'avance
     rng = np.random.default_rng()
-    all_rotation_angles = rng.uniform(0, 2*np.pi, size=(len(unique_windows), NumberOfRotations))
+    all_rotation_angles = rng.uniform(np.pi/180, 2*np.pi, size=(len(windows_with_multiple_sources), NumberOfRotations))
     
     # Traitement par fenêtre 
-    for i, win in enumerate(unique_windows):
+    for i, win in enumerate(windows_with_multiple_sources):
         win_mask = list_windows['window'] == win
         sub_src = list_windows[win_mask]
         
-        # /////// ROTATION ALEATOIRE ///////
+        # /////// ROTATIONS ALEATOIRES + MIROIRS ///////
         angles = all_rotation_angles[i]
+
+        # I. ROTATIONS
         for angle in angles:
-            # Créer une nouvelle table pour la rotation
-            rotated_src = sub_src.copy()
+            rotated_src = sub_src.copy() # Créer une nouvelle table pour la rotation
             
             # Appliquer la rotation à toutes les paires de coordonnées
             for ra_col, dec_col in coord_cols:
@@ -348,21 +341,44 @@ def random_rotations_and_mirror(list_windows, info_class, NumberOfRotations):
             info_class_augm.append((max_window_num + 1, is_cluster))
             
             max_window_num += 1
-        
-        # /////// MIROIR ///////
 
-        # Miroir (RA -> -RA)
-        mirrored_src = sub_src.copy()
-        for ra_col, _ in coord_cols:
-            mirrored_src[ra_col] = apply_mirror(mirrored_src[ra_col])
-        
-        mirrored_src['window'] = max_window_num + 1
-        augmented_windows.append(mirrored_src)
-        
-        is_cluster = info_class[info_class['window'] == win]['isCluster'][0]
-        info_class_augm.append((max_window_num + 1, is_cluster))
+        # II. MIROIR SUR RA SUR LES ROTATIONS
+        for angle in angles:
+            mirrored_src = sub_src.copy()
+            
+            for ra_col, dec_col in coord_cols:
+                ra = mirrored_src[ra_col]
+                dec = mirrored_src[dec_col]
+                new_ra, new_dec = apply_rotation(ra, dec, angle)
+                mirrored_src[ra_col] = - new_ra
+                mirrored_src[dec_col] = new_dec
+            
+            mirrored_src['window'] = max_window_num + 1
+            augmented_windows.append(mirrored_src)
 
-        max_window_num += 1
+            is_cluster = info_class[info_class['window'] == win]['isCluster'][0]
+            info_class_augm.append((max_window_num + 1, is_cluster))
+            
+            max_window_num += 1
+        
+        # III. MIROIR SUR DEC SUR LES ROTATIONS
+        for angle in angles:
+            mirrored_src = sub_src.copy()
+            
+            for ra_col, dec_col in coord_cols:
+                ra = mirrored_src[ra_col]
+                dec = mirrored_src[dec_col]
+                new_ra, new_dec = apply_rotation(ra, dec, angle)
+                mirrored_src[ra_col] = new_ra
+                mirrored_src[dec_col] = - new_dec
+            
+            mirrored_src['window'] = max_window_num + 1
+            augmented_windows.append(mirrored_src)
+
+            is_cluster = info_class[info_class['window'] == win]['isCluster'][0]
+            info_class_augm.append((max_window_num + 1, is_cluster))
+            
+            max_window_num += 1
     
     # Concaténer tous les résultats
     list_windows_augm = vstack_prealloc(augmented_windows)
@@ -734,7 +750,7 @@ def verifier_discretisation(data, selected_columns, log_scale_flags, column_to_c
 def combine_and_flatten_with_special_tokens(windows_Xamin, info_class, 
                                             cls_token = CLS_TOKEN, sep_token = SEP_TOKEN, sep_amas_token = SEP_AMAS):
     """
-    Returns 2D array of shape (n_windows, max_sources*n_features_Xamin + max_clusters*n_features_input_cluster + max_agn*n_features_input_agn + 2)
+    Returns 2D array of shape (n_windows, max_sources*n_features_Xamin + 4)
     """
     cls_token      = np.array(cls_token).flatten()
     sep_token      = np.array(sep_token).flatten()

@@ -210,7 +210,7 @@ global_stats_Xamin, global_stats_input_clusters, global_stats_input_AGN = \
                             info_AGN_test, 
                             total_rotations=TOTAL_ROTATIONS,
                             chunk_size=CHUNK_SIZE, 
-                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_test",
+                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/rotation_output_test",
                             stats_Xamin = global_stats_Xamin, 
                             stats_input_clusters = global_stats_input_clusters, 
                             stats_input_AGN = global_stats_input_AGN)
@@ -222,7 +222,7 @@ global_stats_Xamin, global_stats_input_clusters, global_stats_input_AGN = \
                             info_AGN_train, 
                             total_rotations=TOTAL_ROTATIONS, 
                             chunk_size=CHUNK_SIZE, 
-                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_train",
+                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/rotation_output_train",
                             stats_Xamin = global_stats_Xamin, 
                             stats_input_clusters = global_stats_input_clusters, 
                             stats_input_AGN = global_stats_input_AGN)
@@ -272,8 +272,8 @@ print(f"=== Discretisation des données === \n")
 
 
 process_and_save_chunks(
-    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_test",
-    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/X_test.txt",
+    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/rotation_output_test",
+    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/X_test.txt",
     stats_Xamin          = global_stats_Xamin,
     stats_input_clusters = global_stats_input_clusters,
     stats_input_AGN      = global_stats_input_AGN,
@@ -284,8 +284,8 @@ process_and_save_chunks(
 
 
 process_and_save_chunks(
-    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/rotation_output_train",
-    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/X_train.txt",
+    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/rotation_output_train",
+    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/X_train.txt",
     stats_Xamin          = global_stats_Xamin,
     stats_input_clusters = global_stats_input_clusters,
     stats_input_AGN      = global_stats_input_AGN,
@@ -317,7 +317,7 @@ constantes_du_modele = {
 }
 
 # Sauvegarde en JSON
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/constantes_du_modele.json"
+save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/constantes_du_modele.json"
 with open(save_path, 'w') as f:
     json.dump(constantes_du_modele, f, indent=4)
 
@@ -325,12 +325,12 @@ print(f"Dictionnaire sauvegardé dans {save_path}")
 
 # Sauvegarde des statistiques globales
 
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/global_stats_Xamin.json"
+save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/global_stats_Xamin.json"
 with open(save_path, 'w') as f:
     json.dump(global_stats_Xamin, f, indent=4)
 print(f"Dictionnaire sauvegardé dans {save_path}")
 
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/global_stats_input_clusters.json"
+save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/global_stats_input_clusters.json"
 with open(save_path, 'w') as f:
     json.dump(global_stats_input_clusters, f, indent=4)
 print(f"Dictionnaire sauvegardé dans {save_path}")
@@ -338,7 +338,7 @@ print(f"Dictionnaire sauvegardé dans {save_path}")
 
 global_stats_serializable = convert_numpy_types(global_stats_input_AGN)
 
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/TransformerProject/results/{name_dir}/global_stats_input_AGN.json"
+save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Catalog/results/{name_dir}/global_stats_input_AGN.json"
 with open(save_path, 'w') as f:
     json.dump(global_stats_serializable, f, indent=4, ensure_ascii=False)
 print(f"Dictionnaire sauvegardé dans {save_path}")
