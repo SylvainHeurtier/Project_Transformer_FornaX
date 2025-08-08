@@ -35,8 +35,8 @@ EXT_LIKE_SPURIOUS = 15
 NOMBRE_PHOTONS_MIN = 40
 
 # Nombre de rotations de la fenetre
-TOTAL_ROTATIONS = 400
-CHUNK_SIZE = 150
+TOTAL_ROTATIONS = 500
+CHUNK_SIZE = 200
 
 # Dictionnaire pour la tokenisation
 

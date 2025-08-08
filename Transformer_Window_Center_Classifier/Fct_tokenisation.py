@@ -743,6 +743,28 @@ def verifier_discretisation(data, selected_columns, log_scale_flags, column_to_c
 
 
 
+def insert_sep_tokens(array_1d, feature_group_size, sep_token):
+    # Vérification de divisibilité
+    if len(array_1d) % feature_group_size != 0:
+        raise ValueError(f"Longueur {len(array_1d)} non divisible par {feature_group_size}")
+
+    num_groups = len(array_1d) // feature_group_size
+
+    # Reconstruction avec insertion de SEP_TOKEN entre les groupes
+    parts = [
+        array_1d[i * feature_group_size : (i + 1) * feature_group_size]
+        for i in range(num_groups)
+    ]
+
+    # Insertion des SEP_TOKEN entre les groupes (mais pas au début ni à la fin)
+    result = [parts[0]]  # on commence par le premier groupe
+    for group in parts[1:-1]:  # on saute le dernier pour éviter SEP final
+        result.append(np.array([sep_token]))  # SEP entre groupes
+        result.append(group)
+    result.append(np.array([sep_token]))  # SEP juste avant le dernier groupe
+    result.append(parts[-1])
+
+    return np.concatenate(result)
 
 
 
@@ -763,13 +785,16 @@ def combine_and_flatten_with_special_tokens(windows_Xamin, info_class,
 
     result = []
     for win_xamin, srcClassFlag in zip(windows_Xamin, isCluster):
-        win_xamin = np.array(win_xamin)
-        srcClassFlag = np.array(srcClassFlag)
+        win_xamin = np.array(win_xamin).flatten()
+        srcClassFlag = np.array(srcClassFlag).flatten()
+
+        win_xamin = insert_sep_tokens(win_xamin, len(SELECTED_COLUMNS_Xamin), SEP_TOKEN)
+
         seq = []
         seq.extend(cls_token)
-        seq.extend(win_xamin.flatten())
+        seq.extend(win_xamin)
         seq.extend(sep_amas_token)
-        seq.extend(srcClassFlag.flatten())
+        seq.extend(srcClassFlag)
         seq.extend(sep_token)
         result.append(seq)
 

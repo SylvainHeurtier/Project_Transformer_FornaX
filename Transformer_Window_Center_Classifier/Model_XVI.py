@@ -146,18 +146,47 @@ model = AutoregressiveTransformerModel(
 # Loss and optimizer
 loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+class WarmupCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate=1e-4, 
+                 warmup_steps=3000, 
+                 decay_steps=27000, 
+                 alpha=0.0):
+        
+        super().__init__()
+        self.initial_learning_rate = initial_learning_rate
+        self.warmup_steps = warmup_steps
+        self.decay_steps = decay_steps
+        self.alpha = alpha
+        self.cosine_decay = tf.keras.optimizers.schedules.CosineDecay(
+            initial_learning_rate, decay_steps, alpha
+        )
+
+    def __call__(self, step):
+        warmup_lr = (
+            3e-5 + (self.initial_learning_rate - 3e-5) * tf.cast(step, tf.float32) / self.warmup_steps
+        )
+        return tf.cond(
+            step < self.warmup_steps,
+            lambda: warmup_lr,
+            lambda: self.cosine_decay(step - self.warmup_steps),
+        )
+
+    def get_config(self):
+        return {
+            "initial_learning_rate": self.initial_learning_rate,
+            "warmup_steps": self.warmup_steps,
+            "decay_steps": self.decay_steps,
+            "alpha": self.alpha,
+        }
+
+# Use the custom schedule
+lr_schedule = WarmupCosineDecay(
     initial_learning_rate=1e-4,
+    warmup_steps=3000,
     decay_steps=30000 - 3000,
     alpha=0.0
 )
-warmup_steps = 3000
-lr_fn = lambda step: tf.cond(
-    step < warmup_steps,
-    lambda: 3e-5 + (1e-4 - 3e-5) * tf.cast(step, tf.float32) / warmup_steps,
-    lambda: lr_schedule(step - warmup_steps)
-)
-optimizer = keras.optimizers.Adam(learning_rate=lr_fn, clipnorm=0.5)
+optimizer = keras.optimizers.Adam(learning_rate=lr_schedule, clipnorm=0.5)
 
 #optimizer = keras.optimizers.Adam(learning_rate=1e-4, clipnorm=0.5)
 
@@ -191,7 +220,7 @@ def val_step(x):
     val_loss(loss)
 
 # Early stopping
-patience = 500
+patience = 80
 best_val_loss = float('inf')
 wait = 0
 best_weights = None
@@ -259,6 +288,5 @@ with open(f"{save_dir}/val_loss_history.pkl", "wb") as f:
     pickle.dump(val_loss_history, f)
 
 
-4
 
 print("\nTraining complete and all artifacts saved.")

@@ -34,6 +34,7 @@ print("#" + titre.center(largeur-2) + "#")
 print("#" + " " * (largeur-2) + "#")
 print("#" * largeur)
 
+save_dir = f'/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}'
 
 # //////////// Chargements des fichiers ////////////
 print(" ")
@@ -181,7 +182,7 @@ global_stats_Xamin = process_rotations_in_chunks(list_windows_test,
                             info_class_test, 
                             total_rotations=TOTAL_ROTATIONS,
                             chunk_size=CHUNK_SIZE, 
-                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/rotation_output_test",
+                            output_dir = f"{save_dir}/rotation_output_test",
                             stats_Xamin = global_stats_Xamin)
 
 
@@ -189,7 +190,7 @@ global_stats_Xamin = process_rotations_in_chunks(list_windows_train,
                             info_class_train, 
                             total_rotations=TOTAL_ROTATIONS, 
                             chunk_size=CHUNK_SIZE, 
-                            output_dir = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/rotation_output_train",
+                            output_dir = f"{save_dir}/rotation_output_train",
                             stats_Xamin = global_stats_Xamin)
 
 
@@ -236,15 +237,15 @@ print(" ")
 print(f"=== Discretisation des données === \n")
 
 process_and_save_chunks(
-    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/rotation_output_test",
-    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_test.txt",
+    directory   = f"{save_dir}/rotation_output_test",
+    output_path = f"{save_dir}/X_test.txt",
     stats_Xamin = global_stats_Xamin,
     max_sources = MAX_SOURCES
 )
 
 process_and_save_chunks(
-    directory   = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/rotation_output_train",
-    output_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/X_train.txt",
+    directory   = f"{save_dir}/rotation_output_train",
+    output_path = f"{save_dir}/X_train.txt",
     stats_Xamin = global_stats_Xamin,
     max_sources = MAX_SOURCES
 )
@@ -268,7 +269,7 @@ constantes_du_modele = {
 }
 
 # Sauvegarde en JSON
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/constantes_du_modele.json"
+save_path = f"{save_dir}/constantes_du_modele.json"
 with open(save_path, 'w') as f:
     json.dump(constantes_du_modele, f, indent=4)
 
@@ -276,10 +277,10 @@ print(f"Dictionnaire sauvegardé dans {save_path}")
 
 # Sauvegarde des statistiques globales
 
-save_path = f"/lustre/fswork/projects/rech/wka/ufl73qn/Project_Transformer_FornaX/Transformer_Window_Center_Classifier/results/{name_dir}/global_stats_Xamin.json"
+save_path = f"{save_dir}/global_stats_Xamin.json"
 with open(save_path, 'w') as f:
     json.dump(global_stats_Xamin, f, indent=4)
-print(f"Dictionnaire sauvegardé dans {save_path}")
+print(f"Statistiques globales sauvegardé dans {save_path}")
 
 
 print("\n   ***   THE END   ***   \n")
